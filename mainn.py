@@ -1,6 +1,6 @@
 """
-DEMON KING QUEST v4
-pip install pygame  →  python demon_king_quest.py
+DEMON KING QUEST v5
+pip install pygame  →  python demon_king_quest_v5.py
 
 KONTROL UMUM:
   WASD / Arrow  = Gerak
@@ -13,12 +13,13 @@ BERBURU MONSTER KECIL (hutan):
   K             = Ultimate pedang  (area besar, CD panjang)
   Sentuh monster = +1 monster (setelah kena sword)
 
-GUA MONSTER BESAR (dungeon bercabang):
+GUA MONSTER BESAR (dungeon labirin bergambar):
   WASD          = Gerak player di dalam dungeon
   J             = Tebas pedang  (jangkauan pendek)
   K             = Ultimate pedang  (area besar, CD panjang)
   M             = Tembak monster kecil sebagai proyektil
-  Monster besar bisa kena pedang langsung saat didekati!
+  Monster besar ada di TENGAH ruangan, serang saat masuk kamar!
+  Kabut perang menghalangi pandangan di luar jangkauan cahaya!
 
 LAWAN RAJA IBLIS (battle box):
   Phase Explore : WASD  cari monster, SPASI = mulai lawan
@@ -42,12 +43,14 @@ C = {
     "cyan":(80,200,200),"gray":(120,120,120),"dkgray":(60,60,60),"ltgray":(200,200,200),
     "sky":(100,180,240),"ground":(60,140,60),"brown":(120,80,40),"pink":(255,120,150),
     "cream":(255,240,210),"gold":(255,215,0),
-    "cave":(30,22,18),"cavewall":(55,40,30),"cavefloor":(45,35,28),"cavetorch":(200,120,40),
-    "fog":(10,8,6),"stone":(70,60,50),"darkstone":(40,32,25),
+    "cave":(22,16,12),"cavewall":(55,40,30),"cavefloor":(42,32,24),"cavetorch":(200,120,40),
+    "fog":(8,5,3),"stone":(70,60,50),"darkstone":(35,26,18),
+    "roomfloor":(55,42,30),"corridor":(38,28,20),"walledge":(80,58,40),
+    "doorcolor":(90,55,25),"doorframe":(110,75,40),
 }
 
 screen = pygame.display.set_mode((SW,SH))
-pygame.display.set_caption("Demon King Quest")
+pygame.display.set_caption("Demon King Quest v5")
 clock  = pygame.time.Clock()
 
 def mkf(s): return pygame.font.SysFont("couriernew",s,bold=True)
@@ -138,24 +141,86 @@ def draw_small_monster(s,x,y,variant=0,scale=1.0):
     pygame.draw.polygon(s,C["darkred"],[(bx+int(6*scale),by-int(14*scale)),
         (bx+int(8*scale),by-int(20*scale)),(bx+int(3*scale),by-int(14*scale))])
 
-def draw_big_monster(s,x,y,color=(140,40,40),scale=1.0):
-    bx,by=int(x),int(y)
-    sc=scale
-    pxr(s,color,(bx-int(20*sc),by-int(40*sc),int(40*sc),int(40*sc)),2,C["black"])
-    pxr(s,color,(bx-int(18*sc),by-int(66*sc),int(36*sc),int(28*sc)),2,C["black"])
-    pygame.draw.polygon(s,C["darkred"],[(bx-int(18*sc),by-int(66*sc)),
-        (bx-int(28*sc),by-int(84*sc)),(bx-int(6*sc),by-int(66*sc))])
-    pygame.draw.polygon(s,C["darkred"],[(bx+int(18*sc),by-int(66*sc)),
-        (bx+int(28*sc),by-int(84*sc)),(bx+int(6*sc),by-int(66*sc))])
-    pxr(s,C["yellow"],(bx-int(12*sc),by-int(60*sc),int(8*sc),int(8*sc)))
-    pxr(s,C["yellow"],(bx+int(4*sc),by-int(60*sc),int(8*sc),int(8*sc)))
-    pxr(s,C["black"],(bx-int(10*sc),by-int(58*sc),int(4*sc),int(4*sc)))
-    pxr(s,C["black"],(bx+int(6*sc),by-int(58*sc),int(4*sc),int(4*sc)))
-    pxr(s,C["black"],(bx-int(8*sc),by-int(48*sc),int(16*sc),int(5*sc)))
-    pxr(s,color,(bx-int(40*sc),by-int(38*sc),int(20*sc),int(14*sc)),2,C["black"])
-    pxr(s,color,(bx+int(20*sc),by-int(38*sc),int(20*sc),int(14*sc)),2,C["black"])
-    pxr(s,C["dkgray"],(bx-int(18*sc),by,int(16*sc),int(20*sc)),2,C["black"])
-    pxr(s,C["dkgray"],(bx+int(2*sc),by,int(16*sc),int(20*sc)),2,C["black"])
+def draw_big_monster_centered(s, x, y, color=(140,40,40), scale=1.8, frame=0, hp_ratio=1.0):
+    """Monster besar di tengah ruangan - ukuran besar dan detail"""
+    bx, by = int(x), int(y)
+    sc = scale
+    # Animasi mengambang
+    bob = math.sin(frame * 0.04) * 5
+    by = by + int(bob)
+
+    # Aura efek
+    pulse = abs(math.sin(frame * 0.06)) * 15
+    aura_col = (min(255,color[0]+60), min(255,color[1]+20), min(255,color[2]+20), 60)
+    aura_surf = pygame.Surface((int(100*sc), int(100*sc)), pygame.SRCALPHA)
+    pygame.draw.ellipse(aura_surf, aura_col,
+        (0, 0, int(100*sc), int(80*sc)))
+    s.blit(aura_surf, (bx - int(50*sc), by - int(40*sc)))
+
+    # Kaki
+    pxr(s, C["dkgray"], (bx-int(22*sc), by, int(18*sc), int(28*sc)), 2, C["black"])
+    pxr(s, C["dkgray"], (bx+int(4*sc), by, int(18*sc), int(28*sc)), 2, C["black"])
+
+    # Badan utama
+    body_col = color
+    pxr(s, body_col, (bx-int(26*sc), by-int(50*sc), int(52*sc), int(52*sc)), 2, C["black"])
+
+    # Kepala
+    head_col = (min(255,color[0]+20), min(255,color[1]+10), min(255,color[2]+10))
+    pxr(s, head_col, (bx-int(24*sc), by-int(90*sc), int(48*sc), int(42*sc)), 2, C["black"])
+
+    # Tanduk - lebih besar
+    pygame.draw.polygon(s, C["darkred"], [
+        (bx-int(24*sc), by-int(90*sc)),
+        (bx-int(38*sc), by-int(120*sc)),
+        (bx-int(8*sc),  by-int(90*sc))])
+    pygame.draw.polygon(s, C["darkred"], [
+        (bx+int(24*sc), by-int(90*sc)),
+        (bx+int(38*sc), by-int(120*sc)),
+        (bx+int(8*sc),  by-int(90*sc))])
+    # Glow di tanduk
+    pygame.draw.polygon(s, C["red"], [
+        (bx-int(24*sc), by-int(90*sc)),
+        (bx-int(35*sc), by-int(115*sc)),
+        (bx-int(10*sc), by-int(90*sc))])
+    pygame.draw.polygon(s, C["red"], [
+        (bx+int(24*sc), by-int(90*sc)),
+        (bx+int(35*sc), by-int(115*sc)),
+        (bx+int(10*sc), by-int(90*sc))])
+
+    # Mata bercahaya
+    eye_glow = int(abs(math.sin(frame*0.08))*40+180)
+    pxr(s, (eye_glow, eye_glow//3, 0), (bx-int(16*sc), by-int(80*sc), int(10*sc), int(10*sc)))
+    pxr(s, (eye_glow, eye_glow//3, 0), (bx+int(6*sc), by-int(80*sc), int(10*sc), int(10*sc)))
+    pxr(s, C["black"], (bx-int(14*sc), by-int(78*sc), int(6*sc), int(6*sc)))
+    pxr(s, C["black"], (bx+int(8*sc), by-int(78*sc), int(6*sc), int(6*sc)))
+
+    # Mulut gerigi
+    pxr(s, C["black"], (bx-int(12*sc), by-int(64*sc), int(24*sc), int(8*sc)))
+    for i in range(4):
+        tx = bx-int(11*sc)+i*int(6*sc)
+        pygame.draw.polygon(s, C["white"], [
+            (tx, by-int(64*sc)),
+            (tx+int(3*sc), by-int(64*sc)),
+            (tx+int(1.5*sc), by-int(70*sc))])
+
+    # Lengan
+    pxr(s, body_col, (bx-int(50*sc), by-int(48*sc), int(26*sc), int(18*sc)), 2, C["black"])
+    pxr(s, body_col, (bx+int(24*sc), by-int(48*sc), int(26*sc), int(18*sc)), 2, C["black"])
+    # Cakar
+    for ci in range(3):
+        pygame.draw.line(s, C["dkgray"],
+            (bx-int(26*sc)+ci*int(6*sc), by-int(30*sc)),
+            (bx-int(28*sc)+ci*int(6*sc), by-int(22*sc)), int(2*sc))
+        pygame.draw.line(s, C["dkgray"],
+            (bx+int(24*sc)+ci*int(6*sc), by-int(30*sc)),
+            (bx+int(22*sc)+ci*int(6*sc), by-int(22*sc)), int(2*sc))
+
+    # HP bar besar di atas monster
+    bar_w = int(120*sc)
+    bar_h = 10
+    hpbar(s, bx-bar_w//2, by-int(140*sc), bar_w, bar_h, hp_ratio, 1.0, (220,50,50))
+    pxt(s, "BOSS", F_SM, C["red"], bx, by-int(155*sc), center=True)
 
 def draw_demon_king(s,x,y,frame=0):
     bx,by=int(x),int(y)
@@ -302,7 +367,7 @@ class BackConfirm:
         bx,by,bw,bh=SW//2-220,SH//2-80,440,160
         pxr(s,C["black"],(bx-3,by-3,bw+6,bh+6))
         pxr(s,C["dkgray"],(bx,by,bw,bh));pxr(s,C["orange"],(bx,by,bw,bh),3)
-        pxt(s,"⚠ Kembali ke World Map?",F_MD,C["yellow"],SW//2,by+18,center=True)
+        pxt(s,"Kembali ke World Map?",F_MD,C["yellow"],SW//2,by+18,center=True)
         pxt(s,"Progress di lokasi ini TIDAK tersimpan!",F_SM,C["orange"],SW//2,by+44,center=True)
         for i,(lbl,col) in enumerate(zip(["YA, Kembali","TIDAK, Lanjut"],
                 [C["red"] if self.sel==0 else C["gray"],C["green"] if self.sel==1 else C["gray"]])):
@@ -330,7 +395,6 @@ class SmallHunt:
     ULT_R    = 110
     SWORD_CD = 18
     ULT_CD   = 120
-    # HP player di hutan
     PHP_MAX  = 60
 
     def __init__(self,state):
@@ -344,10 +408,8 @@ class SmallHunt:
         self.ax=self.px-50;self.ay=self.py
         self.bx=self.px+50;self.by_=self.py
         self.particles=Particles()
-        # player HP & invincibility
         self.php=self.PHP_MAX
-        self.inv=0          # invincibility frames setelah kena
-        # semua peluru monster kecil
+        self.inv=0
         self.enemy_bullets=[]
 
     def _spawn(self,n):
@@ -360,7 +422,7 @@ class SmallHunt:
                 "x":x,"y":y,
                 "vx":random.uniform(-1,1),"vy":random.uniform(-1,1),
                 "variant":random.randint(0,4),"alive":True,"stunned":0,
-                "atk_cd":random.randint(60,140),   # cooldown tembak
+                "atk_cd":random.randint(60,140),
             })
         return ms
 
@@ -380,11 +442,9 @@ class SmallHunt:
                     color=[(255,200,0),(255,255,100)],spd=3,life=20,sz=4,grav=0)
 
     def _monster_shoot(self,m):
-        """Monster kecil tembak peluru kecil ke arah player."""
         dx=self.px-m["x"]; dy=self.py-m["y"]
         d=max(1,math.hypot(dx,dy))
         spd=3.2+random.uniform(-0.4,0.4)
-        # sedikit spread
         spread=random.uniform(-0.18,0.18)
         cols=[(220,80,80),(80,80,220),(80,200,80),(200,140,60),(160,80,220)]
         col=cols[m["variant"]%len(cols)]
@@ -433,18 +493,15 @@ class SmallHunt:
                     if self.state["small_monsters"]>=50:
                         self.phase="full";self.result="full"
                 continue
-            # gerak wandering
             m["x"]+=m["vx"];m["y"]+=m["vy"]
             if m["x"]<20 or m["x"]>SW-20: m["vx"]*=-1
             if m["y"]<20 or m["y"]>SH-80: m["vy"]*=-1
-            # tembak ke player jika cukup dekat
             dist=math.hypot(m["x"]-self.px,m["y"]-self.py)
             m["atk_cd"]-=1
             if m["atk_cd"]<=0 and dist<260:
                 m["atk_cd"]=random.randint(70,130)
                 self._monster_shoot(m)
 
-        # update peluru musuh
         for b in self.enemy_bullets[:]:
             b["x"]+=b["vx"]; b["y"]+=b["vy"]; b["life"]-=1
             if b["life"]<=0 or b["x"]<0 or b["x"]>SW or b["y"]<0 or b["y"]>SH:
@@ -476,7 +533,6 @@ class SmallHunt:
             s.blit(surf2,(0,0))
             pygame.draw.circle(s,(255,220,80),(int(self.px+ox),int(self.py)),self.ULT_R,3)
 
-        # peluru musuh
         for b in self.enemy_bullets:
             pygame.draw.circle(s,b["col"],(int(b["x"]+ox),int(b["y"])),b["r"])
             pygame.draw.circle(s,C["white"],(int(b["x"]+ox),int(b["y"])),b["r"],1)
@@ -493,13 +549,11 @@ class SmallHunt:
         if ha: draw_friend_a(s,self.ax+ox,self.ay,self.frame)
         if hb: draw_friend_b(s,self.bx+ox,self.by_,self.frame)
 
-        # player berkedip saat invincible
         if self.inv<=0 or (self.frame//4)%2==0:
             draw_player(s,self.px+ox,self.py,frame=self.frame,
                         sword=self.sword_anim>0,ult=self.ult_anim>0)
 
         sm=self.state["small_monsters"]
-        # HP bar player
         hpbar(s,10,10,140,14,self.php,self.PHP_MAX,(80,200,80))
         pxt(s,f"HP: {self.php}/{self.PHP_MAX}",F_SM,C["white"],10,28)
         hpbar(s,10,46,180,12,sm,50,(80,180,220))
@@ -524,37 +578,47 @@ class SmallHunt:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  DUNGEON CAVE  – top-down dungeon dengan fog of war & beberapa ruangan
+#  DUNGEON CAVE v2  – RPG-style top-down dungeon, labirin nyata
+#  Setiap ruangan punya monster BESAR di TENGAH, gelap dengan fog of war
 # ════════════════════════════════════════════════════════════════════════════
 
-TILE_SIZE = 48   # pixel per tile di dunia dungeon
-TILE_FLOOR  = 0
-TILE_WALL   = 1
-TILE_DOOR   = 2
-TILE_ENTRY  = 3
-TILE_EXIT   = 4
+TS = 32  # tile size pixel - lebih kecil untuk dungeon lebih detail
 
-class Room:
-    def __init__(self, tx, ty, tw, th, room_id):
-        self.tx=tx; self.ty=ty; self.tw=tw; self.th=th
-        self.id=room_id
-        self.cleared=False
-        self.monsters=[]
-        # tile coords of center
-        self.cx=tx+tw//2; self.cy=ty+th//2
-    def rect(self): return pygame.Rect(self.tx,self.ty,self.tw,self.th)
-    def world_center(self):
-        return (self.cx*TILE_SIZE+TILE_SIZE//2, self.cy*TILE_SIZE+TILE_SIZE//2)
+# Tile types
+T_WALL    = 0
+T_FLOOR   = 1
+T_DOOR    = 2
+T_ENTRY   = 3
+T_CHEST   = 4
+T_PILLAR  = 5
+
+class DungeonRoom:
+    def __init__(self, x, y, w, h, room_id):
+        self.x=x; self.y=y; self.w=w; self.h=h; self.id=room_id
+        self.cx = x + w//2; self.cy = y + h//2
+        self.monster = None  # satu boss per ruangan
+        self.cleared = False
+        self.visited = False
 
 class DungeonCave:
-    MAP_W = 52   # tiles wide
-    MAP_H = 44   # tiles tall
-    FOG_R = 6    # fog of war radius in tiles
-    SWORD_R  = 60
-    ULT_R    = 120
+    """
+    Dungeon labirin bergaya RPG Maker:
+    - Setiap ruangan punya satu monster BESAR di tengah
+    - Labirin dengan banyak cabang dan koridor
+    - Fog of war gelap, cahaya torch sekitar player
+    - Monster besar menembak peluru BESAR dan cepat
+    - Player bisa dodge dengan WASD, serang J/K/M
+    """
+
+    MAP_W = 80   # tiles wide
+    MAP_H = 60   # tiles tall
+    LIGHT_R = 5.5  # radius cahaya dalam tiles
+    SWORD_R  = 70
+    ULT_R    = 130
     SWORD_CD = 20
-    ULT_CD   = 140
-    SHOOT_CD = 22
+    ULT_CD   = 150
+    SHOOT_CD = 25
+    PHP_MAX  = 80
 
     def __init__(self, state):
         self.state = state
@@ -567,513 +631,751 @@ class DungeonCave:
         self.ult_cd   = 0
         self.sword_anim = 0
         self.ult_anim   = 0
-        self.projectiles = []   # player-fired monster projectiles
-        self.big_killed  = 0   # monsters killed this session
+        self.projectiles = []
+        self.big_killed  = 0
+        self.php = self.PHP_MAX
+        self.inv = 0
 
-        # generate map
-        self.tiles, self.rooms, self.corridors = self._gen_map()
+        # fog surfaces cache
+        self._fog_surf = pygame.Surface((SW+TS*2, SH+TS*2), pygame.SRCALPHA)
+
+        # generate dungeon
+        self.tiles = [[T_WALL]*self.MAP_H for _ in range(self.MAP_W)]
         self.explored = [[False]*self.MAP_H for _ in range(self.MAP_W)]
+        self.rooms = []
+        self._gen_dungeon()
 
-        # spawn player at entry room
-        entry = self.rooms[0]
-        wx,wy = entry.world_center()
-        self.px = float(wx); self.py = float(wy)
-
-        # populate rooms with monsters (skip entry room)
-        self._populate_monsters()
+        # spawn player di entry room (room 0) - tengah ruangan
+        r0 = self.rooms[0]
+        self.px = float(r0.cx * TS + TS//2)
+        self.py = float(r0.cy * TS + TS//2)
 
         # camera
         self.cam_x = 0.0; self.cam_y = 0.0
 
-        # torch flicker
-        self.torch_flicker = 0
+        # torch positions untuk dekorasi
+        self.torches = self._place_torches()
+        self.torch_tick = 0
 
-        # minimap surface
-        self.minimap_surf = pygame.Surface((self.MAP_W*4, self.MAP_H*4))
+    # ── dungeon generation ──────────────────────────────────────────────
+    def _gen_dungeon(self):
+        W, H = self.MAP_W, self.MAP_H
 
-    # ── map generation ──────────────────────────────────────────────────
-    def _gen_map(self):
-        W,H = self.MAP_W, self.MAP_H
-        tiles = [[TILE_WALL]*H for _ in range(W)]
-
-        # define castle-like room layout
-        room_defs = [
-            # entry hall
-            (2, H//2-3, 8, 6, "entry"),
-            # left branch
-            (12, H//2-4, 7, 8, "left1"),
-            (21, H//2-6, 8, 7, "left2"),
-            # right branch top
-            (12, H//2-14, 7, 7, "top1"),
-            (21, H//2-16, 9, 8, "top2"),
-            # right branch bottom
-            (12, H//2+6, 7, 7, "bot1"),
-            (21, H//2+8, 9, 8, "bot2"),
-            # center junction
-            (31, H//2-5, 9, 10, "center"),
-            # far rooms
-            (42, H//2-8, 7, 7, "far1"),
-            (42, H//2+1, 7, 7, "far2"),
+        # Layout ruangan seperti RPG Maker - banyak ruangan terhubung
+        # Entry room di kiri tengah, boss rooms di kanan
+        room_templates = [
+            # (x_tile, y_tile, width_tile, height_tile) - entry room
+            (2, H//2-4, 10, 8),           # 0: Entry Hall
+            # cabang utama
+            (16, H//2-4, 9, 8),           # 1: Hall Tengah
+            (29, H//2-4, 8, 8),           # 2: Junction
+            # cabang atas
+            (16, H//2-16, 8, 8),          # 3: Ruang Atas Kiri
+            (28, H//2-18, 9, 9),          # 4: Ruang Atas Kanan
+            (40, H//2-18, 8, 8),          # 5: Far Top
+            # cabang bawah
+            (16, H//2+10, 8, 8),          # 6: Ruang Bawah Kiri
+            (28, H//2+12, 9, 9),          # 7: Ruang Bawah Kanan
+            (40, H//2+12, 8, 8),          # 8: Far Bottom
+            # ruang tengah & boss
+            (40, H//2-4, 10, 8),          # 9: Ruang Center
+            (54, H//2-6, 11, 12),         # 10: Ruang Besar
+            (54, H//2-20, 9, 10),         # 11: Ruang Kiri Boss
+            (54, H//2+10, 9, 10),         # 12: Ruang Kanan Boss
+            (68, H//2-4, 8, 8),           # 13: Boss Lobby
         ]
 
-        rooms = []
-        for i,(tx,ty,tw,th,_) in enumerate(room_defs):
-            # clamp to map
-            tx=max(1,min(W-tw-1,tx)); ty=max(1,min(H-th-1,ty))
-            r = Room(tx,ty,tw,th,i)
-            rooms.append(r)
-            for x in range(tx,tx+tw):
-                for y in range(ty,ty+th):
-                    tiles[x][y] = TILE_FLOOR
+        for i, (rx, ry, rw, rh) in enumerate(room_templates):
+            rx = max(1, min(W-rw-1, rx))
+            ry = max(1, min(H-rh-1, ry))
+            room = DungeonRoom(rx, ry, rw, rh, i)
+            self.rooms.append(room)
+            for x in range(rx, rx+rw):
+                for y in range(ry, ry+rh):
+                    self.tiles[x][y] = T_FLOOR
+            # Tandai entry
+            if i == 0:
+                self.tiles[room.cx][room.cy] = T_ENTRY
 
-        # mark entry & build corridors
-        ex,ey = rooms[0].cx, rooms[0].cy
-        tiles[ex][ey] = TILE_ENTRY
+        # Tambahkan pilar di dalam ruangan besar
+        for room in self.rooms:
+            if room.w >= 9 and room.h >= 9:
+                offsets = [(2, 2), (room.w-3, 2), (2, room.h-3), (room.w-3, room.h-3)]
+                for ox, oy in offsets:
+                    px_ = room.x + ox
+                    py_ = room.y + oy
+                    if 0 < px_ < W-1 and 0 < py_ < H-1:
+                        self.tiles[px_][py_] = T_PILLAR
 
-        # connect rooms with corridors
-        connections = [(0,1),(1,2),(0,3),(3,4),(0,5),(5,6),(1,7),(7,8),(7,9)]
-        corridors = []
-        for a_idx,b_idx in connections:
-            if a_idx>=len(rooms) or b_idx>=len(rooms): continue
-            ra=rooms[a_idx]; rb=rooms[b_idx]
-            ax,ay=ra.cx,ra.cy; bx,by=rb.cx,rb.cy
-            # L-shaped corridor
-            for x in range(min(ax,bx),max(ax,bx)+1):
-                y=ay
-                tiles[max(1,min(W-2,x))][max(1,min(H-2,y))] = TILE_FLOOR
-                tiles[max(1,min(W-2,x))][max(1,min(H-2,y+1))] = TILE_FLOOR
-            for y in range(min(ay,by),max(ay,by)+1):
-                x=bx
-                tiles[max(1,min(W-2,x))][max(1,min(H-2,y))] = TILE_FLOOR
-                tiles[max(1,min(W-2,x))][max(1,min(H-2,y+1))] = TILE_FLOOR
-            corridors.append((ax,ay,bx,by))
+        # Koneksi antar ruangan dengan koridor
+        connections = [
+            (0,1),(1,2),(1,3),(3,4),(4,5),(1,6),(6,7),(7,8),
+            (2,9),(5,9),(8,9),(9,10),(10,11),(10,12),(10,13)
+        ]
+        for a_id, b_id in connections:
+            if a_id < len(self.rooms) and b_id < len(self.rooms):
+                self._connect_rooms(self.rooms[a_id], self.rooms[b_id])
 
-        # add some pillars / detail in larger rooms
-        for r in rooms[1:]:
-            if r.tw>=8 and r.th>=7:
-                for px_,py_ in [(r.tx+2,r.ty+2),(r.tx+r.tw-3,r.ty+2),
-                                 (r.tx+2,r.ty+r.th-3),(r.tx+r.tw-3,r.ty+r.th-3)]:
-                    if 1<px_<W-1 and 1<py_<H-1:
-                        tiles[px_][py_] = TILE_WALL
+        # Tambah beberapa ruangan kecil tambahan (secret rooms)
+        self._add_secret_corridors()
 
-        return tiles, rooms, corridors
+        # Spawn monster boss di setiap ruangan kecuali entry (room 0)
+        boss_colors = [
+            (160, 40, 40),    # merah
+            (40, 40, 160),    # biru
+            (40, 140, 40),    # hijau
+            (160, 80, 20),    # coklat
+            (100, 40, 160),   # ungu
+            (160, 40, 100),   # pink
+            (100, 100, 20),   # kuning gelap
+            (20, 100, 120),   # teal
+            (160, 60, 0),     # oranye
+            (80, 0, 80),      # magenta
+            (0, 80, 40),      # hijau tua
+            (120, 0, 0),      # merah tua
+            (0, 0, 120),      # biru tua
+        ]
+        for i, room in enumerate(self.rooms[1:], 1):
+            col = boss_colors[(i-1) % len(boss_colors)]
+            scale = random.uniform(1.4, 2.0)
+            hp_base = int(80 * scale)
+            # Boss lobby punya boss paling kuat
+            if i == 13:
+                scale = 2.2; hp_base = 200
+            room.monster = {
+                "x": float(room.cx * TS + TS//2),
+                "y": float(room.cy * TS + TS//2),
+                "color": col,
+                "scale": scale,
+                "hp": hp_base,
+                "maxhp": hp_base,
+                "alive": True,
+                "stun": 0,
+                "atk_cd": random.randint(60, 120),
+                "bullets": [],
+                "aggro": False,
+                "pattern": i % 4,  # pola serangan berbeda
+                "atk_phase": 0,
+                "variant": (i-1) % 5,
+            }
 
-    def _populate_monsters(self):
-        # boss monster colors
-        colors=[(160,40,40),(40,40,160),(40,140,40),(140,80,20),(100,40,160),(160,40,100)]
-        for i,room in enumerate(self.rooms[1:], 1):
-            count = 1 if i<=3 else (2 if i<=6 else 3)
-            for j in range(count):
-                wx,wy = room.world_center()
-                offset_x = random.randint(-40,40)
-                offset_y = random.randint(-40,40)
-                col = colors[(i+j)%len(colors)]
-                variant = (i+j)%5
-                scale = random.uniform(0.9,1.4)
-                hp = int(60*scale)
-                room.monsters.append({
-                    "x":float(wx+offset_x), "y":float(wy+offset_y),
-                    "vx":random.uniform(-0.6,0.6), "vy":random.uniform(-0.6,0.6),
-                    "color":col, "variant":variant, "scale":scale,
-                    "hp":hp, "maxhp":hp, "alive":True,
-                    "stun":0, "atk_cd":0,
-                    "bullets":[], "aggro":False,
-                })
+    def _connect_rooms(self, ra, rb):
+        """Buat koridor L-shape antara dua ruangan"""
+        W, H = self.MAP_W, self.MAP_H
+        ax, ay = ra.cx, ra.cy
+        bx, by = rb.cx, rb.cy
+        # Horizontal dulu
+        for x in range(min(ax, bx), max(ax, bx)+1):
+            x = max(1, min(W-2, x))
+            self.tiles[x][max(1,min(H-2,ay))] = T_FLOOR
+            self.tiles[x][max(1,min(H-2,ay+1))] = T_FLOOR
+        # Lalu vertical
+        for y in range(min(ay, by), max(ay, by)+1):
+            y_c = max(1, min(H-2, y))
+            self.tiles[max(1,min(W-2,bx))][y_c] = T_FLOOR
+            self.tiles[max(1,min(W-2,bx+1))][y_c] = T_FLOOR
+
+    def _add_secret_corridors(self):
+        """Tambah koridor lebar untuk nuansa labirin lebih dalam"""
+        W, H = self.MAP_W, self.MAP_H
+        # Beberapa segmen koridor pendek
+        extra = [
+            (12, H//2-10, 4, 6),    # koridor kiri atas
+            (12, H//2+4,  4, 6),    # koridor kiri bawah
+            (24, H//2-2,  5, 4),    # koridor tengah
+            (36, H//2-10, 4, 5),
+            (36, H//2+6,  4, 5),
+            (48, H//2-12, 5, 4),
+            (48, H//2+8,  5, 4),
+            (62, H//2-4,  4, 8),
+        ]
+        for rx, ry, rw, rh in extra:
+            rx = max(1, min(W-rw-1, rx)); ry = max(1, min(H-rh-1, ry))
+            for x in range(rx, rx+rw):
+                for y in range(ry, ry+rh):
+                    if 0 < x < W-1 and 0 < y < H-1:
+                        self.tiles[x][y] = T_FLOOR
+
+    def _place_torches(self):
+        """Tempatkan obor di dinding dekat ruangan"""
+        torches = []
+        for room in self.rooms:
+            # Obor di tengah dinding tiap sisi ruangan
+            cx_w = (room.cx) * TS + TS//2
+            cy_w = (room.cy) * TS + TS//2
+            room_w_px = room.w * TS
+            room_h_px = room.h * TS
+            rx_w = room.x * TS
+            ry_w = room.y * TS
+            # Atas, bawah, kiri, kanan dinding dalam ruangan
+            torches.append((cx_w, ry_w + 4))
+            torches.append((cx_w, ry_w + room_h_px - 8))
+            torches.append((rx_w + 4, cy_w))
+            torches.append((rx_w + room_w_px - 8, cy_w))
+        return torches
 
     # ── tile helpers ────────────────────────────────────────────────────
-    def _is_walkable(self,tx,ty):
-        if tx<0 or ty<0 or tx>=self.MAP_W or ty>=self.MAP_H: return False
-        return self.tiles[tx][ty] != TILE_WALL
-
-    def _world_walkable(self,wx,wy):
-        """check 4 corners of a small bbox around player"""
-        r=10
-        for dx,dy in [(-r,-r),(r,-r),(-r,r),(r,r)]:
-            tx=int((wx+dx)//TILE_SIZE); ty=int((wy+dy)//TILE_SIZE)
-            if not self._is_walkable(tx,ty): return False
+    def _walkable(self, wx, wy):
+        margin = 8
+        for dx, dy in [(-margin,-margin),(margin,-margin),(-margin,margin),(margin,margin)]:
+            tx = int((wx+dx) // TS); ty = int((wy+dy) // TS)
+            if tx < 0 or ty < 0 or tx >= self.MAP_W or ty >= self.MAP_H: return False
+            t = self.tiles[tx][ty]
+            if t == T_WALL or t == T_PILLAR: return False
         return True
 
-    # ── update ──────────────────────────────────────────────────────────
-    def handle_key(self,k):
+    # ── key handler ──────────────────────────────────────────────────────
+    def handle_key(self, k):
         if self.result: return
-        if k==pygame.K_m and self.shoot_cd<=0:
+        if k == pygame.K_j and self.sword_cd <= 0:
+            self._sword_attack(self.SWORD_R, 25)
+            self.sword_cd = self.SWORD_CD; self.sword_anim = 16
+        if k == pygame.K_k and self.ult_cd <= 0:
+            self._sword_attack(self.ULT_R, 55)
+            self.ult_cd = self.ULT_CD; self.ult_anim = 32
+        if k == pygame.K_m and self.shoot_cd <= 0:
             self._shoot_projectile()
-        if k==pygame.K_j and self.sword_cd<=0:
-            self._sword_attack(self.SWORD_R, dmg=20)
-            self.sword_cd=self.SWORD_CD; self.sword_anim=14
-        if k==pygame.K_k and self.ult_cd<=0:
-            self._sword_attack(self.ULT_R, dmg=45)
-            self.ult_cd=self.ULT_CD; self.ult_anim=28
-
-    def _shoot_projectile(self):
-        ammo=self.state["small_monsters"]
-        if ammo<=0: return
-        self.state["small_monsters"]-=1; self.shoot_cd=self.SHOOT_CD
-        # find nearest living monster in range
-        nearest=None; nd=99999
-        for room in self.rooms:
-            for m in room.monsters:
-                if m["alive"]:
-                    d=math.hypot(m["x"]-self.px, m["y"]-self.py)
-                    if d<nd: nd=d; nearest=m
-        if nearest:
-            dx=nearest["x"]-self.px; dy=nearest["y"]-self.py
-            d=max(1,math.hypot(dx,dy))
-            spd=9
-            self.projectiles.append({"x":self.px,"y":self.py,
-                "vx":dx/d*spd,"vy":dy/d*spd,
-                "variant":random.randint(0,4),"dmg":22,"r":8,"life":80})
-        else:
-            # no target, shoot upward
-            self.projectiles.append({"x":self.px,"y":self.py,
-                "vx":0,"vy":-9,
-                "variant":random.randint(0,4),"dmg":22,"r":8,"life":80})
-        self.particles.emit(self.px,self.py,n=5,
-            color=[(255,180,0),(255,100,50)],spd=3,life=12,sz=4,grav=0)
 
     def _sword_attack(self, radius, dmg):
-        hit_any=False
+        hit = False
         for room in self.rooms:
-            for m in room.monsters:
-                if not m["alive"]: continue
-                d=math.hypot(m["x"]-self.px, m["y"]-self.py)
-                if d<=radius:
-                    m["hp"]-=dmg; m["stun"]=20
-                    self.particles.emit(m["x"],m["y"],n=10,
-                        color=[(255,220,0),(255,100,0)],spd=4,life=22,sz=5,grav=0)
-                    hit_any=True
-                    if m["hp"]<=0:
-                        m["alive"]=False
-                        self.big_killed+=1
-                        self.state["big_monsters"]=min(5,self.state["big_monsters"]+1)
-                        self.particles.emit(m["x"],m["y"],n=20,
-                            color=[(255,200,0),(200,50,50),(100,200,255)],
-                            spd=6,life=40,sz=7,grav=-0.05)
-        if hit_any: self.shake=5
+            m = room.monster
+            if not m or not m["alive"]: continue
+            d = math.hypot(m["x"]-self.px, m["y"]-self.py)
+            if d <= radius:
+                m["hp"] -= dmg; m["stun"] = 25
+                self.particles.emit(m["x"], m["y"], n=14,
+                    color=[(255,220,0),(255,100,0),(255,50,50)], spd=5, life=28, sz=6, grav=0)
+                hit = True
+                if m["hp"] <= 0:
+                    m["alive"] = False; m["hp"] = 0
+                    self._on_monster_die(m, room)
+        if hit: self.shake = 7
 
+    def _on_monster_die(self, m, room):
+        self.big_killed += 1
+        self.state["big_monsters"] = min(5, self.state["big_monsters"]+1)
+        room.cleared = True
+        self.particles.emit(m["x"], m["y"], n=30,
+            color=[(255,200,0),(200,50,50),(100,200,255),(255,255,100)],
+            spd=7, life=50, sz=8, grav=-0.08)
+
+    def _shoot_projectile(self):
+        ammo = self.state["small_monsters"]
+        if ammo <= 0: return
+        self.state["small_monsters"] -= 1
+        self.shoot_cd = self.SHOOT_CD
+
+        nearest = None; nd = 99999
+        for room in self.rooms:
+            m = room.monster
+            if m and m["alive"]:
+                d = math.hypot(m["x"]-self.px, m["y"]-self.py)
+                if d < nd: nd = d; nearest = m
+
+        if nearest:
+            dx = nearest["x"]-self.px; dy = nearest["y"]-self.py
+            d = max(1, math.hypot(dx, dy))
+            self.projectiles.append({
+                "x": self.px, "y": self.py,
+                "vx": dx/d*10, "vy": dy/d*10,
+                "variant": random.randint(0,4), "dmg": 28, "r": 9, "life": 90
+            })
+        else:
+            # Tembak ke depan
+            self.projectiles.append({
+                "x": self.px, "y": self.py,
+                "vx": 0, "vy": -10,
+                "variant": 0, "dmg": 28, "r": 9, "life": 90
+            })
+        self.particles.emit(self.px, self.py, n=6,
+            color=[(255,180,0),(255,100,50)], spd=3, life=12, sz=4, grav=0)
+
+    # ── update ──────────────────────────────────────────────────────────
     def update(self):
-        self.frame+=1
-        if self.shake>0: self.shake-=1
-        if self.sword_cd>0: self.sword_cd-=1
-        if self.ult_cd>0: self.ult_cd-=1
-        if self.shoot_cd>0: self.shoot_cd-=1
-        if self.sword_anim>0: self.sword_anim-=1
-        if self.ult_anim>0: self.ult_anim-=1
+        self.frame += 1
+        self.torch_tick = (self.torch_tick + 1) % 20
+        if self.shake > 0: self.shake -= 1
+        if self.inv > 0: self.inv -= 1
+        if self.sword_cd > 0: self.sword_cd -= 1
+        if self.ult_cd > 0: self.ult_cd -= 1
+        if self.shoot_cd > 0: self.shoot_cd -= 1
+        if self.sword_anim > 0: self.sword_anim -= 1
+        if self.ult_anim > 0: self.ult_anim -= 1
         self.particles.update()
-        self.torch_flicker = random.randint(-2,2)
 
         if self.result: return
 
-        # player movement
-        keys=pygame.key.get_pressed(); spd=3.2
-        dx=0.0; dy=0.0
-        if keys[pygame.K_LEFT]  or keys[pygame.K_a]: dx-=spd
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]: dx+=spd
-        if keys[pygame.K_UP]    or keys[pygame.K_w]: dy-=spd
-        if keys[pygame.K_DOWN]  or keys[pygame.K_s]: dy+=spd
-        if dx!=0 and dy!=0: dx*=0.707; dy*=0.707
+        # Player movement
+        keys = pygame.key.get_pressed(); spd = 3.4
+        dx = 0.0; dy = 0.0
+        if keys[pygame.K_LEFT]  or keys[pygame.K_a]: dx -= spd
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]: dx += spd
+        if keys[pygame.K_UP]    or keys[pygame.K_w]: dy -= spd
+        if keys[pygame.K_DOWN]  or keys[pygame.K_s]: dy += spd
+        if dx != 0 and dy != 0: dx *= 0.707; dy *= 0.707
 
-        nx=self.px+dx; ny=self.py+dy
-        if self._world_walkable(nx, self.py): self.px=nx
-        if self._world_walkable(self.px, ny): self.py=ny
+        nx = self.px + dx; ny = self.py + dy
+        if self._walkable(nx, self.py): self.px = nx
+        if self._walkable(self.px, ny): self.py = ny
 
-        # update explored tiles
-        ptx=int(self.px//TILE_SIZE); pty=int(self.py//TILE_SIZE)
-        for fx in range(ptx-self.FOG_R, ptx+self.FOG_R+1):
-            for fy in range(pty-self.FOG_R, pty+self.FOG_R+1):
-                if 0<=fx<self.MAP_W and 0<=fy<self.MAP_H:
-                    if math.hypot(fx-ptx,fy-pty)<=self.FOG_R:
-                        self.explored[fx][fy]=True
+        # Update explored tiles
+        ptx = int(self.px // TS); pty = int(self.py // TS)
+        for fx in range(ptx-8, ptx+9):
+            for fy in range(pty-8, pty+9):
+                if 0 <= fx < self.MAP_W and 0 <= fy < self.MAP_H:
+                    if math.hypot(fx-ptx, fy-pty) <= 7:
+                        self.explored[fx][fy] = True
 
-        # camera follows player
-        self.cam_x = self.px - SW//2
-        self.cam_y = self.py - SH//2
+        # Camera smooth follow
+        target_cx = self.px - SW//2
+        target_cy = self.py - SH//2
+        self.cam_x += (target_cx - self.cam_x) * 0.15
+        self.cam_y += (target_cy - self.cam_y) * 0.15
 
-        # update monsters
+        # Tandai room visited
         for room in self.rooms:
-            all_dead=all(not m["alive"] for m in room.monsters)
-            if room.monsters: room.cleared = all_dead
-            for m in room.monsters:
-                if not m["alive"]: continue
-                if m["stun"]>0: m["stun"]-=1; continue
+            if self.explored[room.cx][room.cy]:
+                room.visited = True
 
-                dist=math.hypot(m["x"]-self.px, m["y"]-self.py)
-                if dist<250: m["aggro"]=True
+        # Update monsters
+        for room in self.rooms:
+            m = room.monster
+            if not m or not m["alive"]: continue
+            if m["stun"] > 0: m["stun"] -= 1; continue
 
-                if m["aggro"]:
-                    # chase player slowly
-                    if dist>30:
-                        spd_m=0.7+m["scale"]*0.3
-                        ddx=(self.px-m["x"])/max(1,dist)*spd_m
-                        ddy=(self.py-m["y"])/max(1,dist)*spd_m
-                        # try move
-                        nmx=m["x"]+ddx; nmy=m["y"]+ddy
-                        if self._world_walkable(nmx,m["y"]): m["x"]=nmx
-                        if self._world_walkable(m["x"],nmy): m["y"]=nmy
+            dist = math.hypot(m["x"]-self.px, m["y"]-self.py)
+            if dist < 200: m["aggro"] = True
 
-                    # shoot bullet at player
-                    m["atk_cd"]-=1
-                    if m["atk_cd"]<=0:
-                        m["atk_cd"]=int(100/m["scale"])
-                        if dist<300:
-                            ddx=(self.px-m["x"])/max(1,dist)
-                            ddy=(self.py-m["y"])/max(1,dist)
-                            spread=random.uniform(-0.2,0.2)
-                            m["bullets"].append({"x":m["x"],"y":m["y"],
-                                "vx":(ddx+spread)*3.5,"vy":(ddy+spread)*3.5,
-                                "r":7,"life":80,"dmg":int(8*m["scale"])})
+            if m["aggro"]:
+                # Monster bergerak perlahan ke player (tetap di sekitar tengah ruangan)
+                center_x = float(room.cx * TS + TS//2)
+                center_y = float(room.cy * TS + TS//2)
+                dist_center = math.hypot(m["x"]-center_x, m["y"]-center_y)
+                # Tarik ke tengah ruangan jika terlalu jauh
+                if dist_center > 60:
+                    m["x"] += (center_x - m["x"]) * 0.03
+                    m["y"] += (center_y - m["y"]) * 0.03
                 else:
-                    # wander
-                    m["x"]+=m["vx"]; m["y"]+=m["vy"]
-                    if not self._world_walkable(m["x"]+m["vx"]*4, m["y"]):
-                        m["vx"]*=-1
-                    if not self._world_walkable(m["x"], m["y"]+m["vy"]*4):
-                        m["vy"]*=-1
+                    # Gerakan osilasi mengancam
+                    osc = math.sin(self.frame * 0.04 + room.id) * 20
+                    m["x"] = center_x + osc
+                    m["y"] = center_y + math.cos(self.frame * 0.03 + room.id) * 15
 
-                # update monster bullets
-                for b in m["bullets"][:]:
-                    b["x"]+=b["vx"]; b["y"]+=b["vy"]; b["life"]-=1
-                    if b["life"]<=0 or not self._world_walkable(b["x"]//TILE_SIZE*TILE_SIZE//TILE_SIZE,
-                                                                  b["y"]//TILE_SIZE*TILE_SIZE//TILE_SIZE):
-                        m["bullets"].remove(b); continue
-                    # hit player
-                    if math.hypot(b["x"]-self.px, b["y"]-self.py)<b["r"]+10:
-                        self.shake=6
-                        self.particles.emit(self.px,self.py,n=8,
-                            color=[(255,80,80),(255,160,0)],spd=3,life=15,sz=4,grav=0)
-                        m["bullets"].remove(b)
+                # Tembak ke player
+                m["atk_cd"] -= 1
+                if m["atk_cd"] <= 0 and dist < 350:
+                    m["atk_cd"] = max(40, int(80/m["scale"]))
+                    self._boss_shoot(m, dist)
 
-        # update player projectiles
+            # Update peluru boss
+            for b in m["bullets"][:]:
+                b["x"] += b["vx"]; b["y"] += b["vy"]
+                b["life"] -= 1
+                if b["life"] <= 0:
+                    m["bullets"].remove(b); continue
+                tx_ = int(b["x"]//TS); ty_ = int(b["y"]//TS)
+                if tx_ < 0 or ty_ < 0 or tx_ >= self.MAP_W or ty_ >= self.MAP_H:
+                    m["bullets"].remove(b); continue
+                if self.tiles[tx_][ty_] in (T_WALL, T_PILLAR):
+                    self.particles.emit(b["x"], b["y"], n=5,
+                        color=[(200,100,50),(150,50,50)], spd=2, life=10, sz=3, grav=0)
+                    m["bullets"].remove(b); continue
+                # Hit player
+                if self.inv <= 0 and math.hypot(b["x"]-self.px, b["y"]-self.py) < b["r"] + 10:
+                    dmg = b.get("dmg", 12)
+                    self.php -= dmg; self.inv = 35; self.shake = 8
+                    self.particles.emit(self.px, self.py, n=10,
+                        color=[(255,80,80),(255,160,0)], spd=3, life=18, sz=4, grav=0)
+                    m["bullets"].remove(b)
+                    if self.php <= 0:
+                        self.php = 0; self.result = "lose"
+                    continue
+
+        # Update player projectiles
         for proj in self.projectiles[:]:
-            proj["x"]+=proj["vx"]; proj["y"]+=proj["vy"]; proj["life"]-=1
-            if proj["life"]<=0: self.projectiles.remove(proj); continue
-            tx=int(proj["x"]//TILE_SIZE); ty=int(proj["y"]//TILE_SIZE)
-            if not self._is_walkable(tx,ty): self.projectiles.remove(proj); continue
-            # check hit monster
-            hit=False
+            proj["x"] += proj["vx"]; proj["y"] += proj["vy"]; proj["life"] -= 1
+            if proj["life"] <= 0:
+                self.projectiles.remove(proj); continue
+            tx_ = int(proj["x"]//TS); ty_ = int(proj["y"]//TS)
+            if tx_ < 0 or ty_ < 0 or tx_ >= self.MAP_W or ty_ >= self.MAP_H:
+                self.projectiles.remove(proj); continue
+            if self.tiles[tx_][ty_] in (T_WALL, T_PILLAR):
+                self.projectiles.remove(proj); continue
+            hit = False
             for room in self.rooms:
-                for m in room.monsters:
-                    if not m["alive"]: continue
-                    if math.hypot(proj["x"]-m["x"],proj["y"]-m["y"])<m["scale"]*20+proj["r"]:
-                        m["hp"]-=proj["dmg"]; m["stun"]=15; hit=True
-                        self.particles.emit(m["x"],m["y"],n=8,
-                            color=[(255,150,50),(200,50,50)],spd=3,life=18,sz=5,grav=0)
-                        if m["hp"]<=0:
-                            m["alive"]=False; self.big_killed+=1
-                            self.state["big_monsters"]=min(5,self.state["big_monsters"]+1)
-                            self.particles.emit(m["x"],m["y"],n=20,
-                                color=[(255,200,0),(200,50,50),(100,200,255)],
-                                spd=6,life=40,sz=7,grav=-0.05)
-                        break
-                if hit: break
-            if hit: self.projectiles.remove(proj); continue
+                m = room.monster
+                if not m or not m["alive"]: continue
+                if math.hypot(proj["x"]-m["x"], proj["y"]-m["y"]) < m["scale"]*22+proj["r"]:
+                    m["hp"] -= proj["dmg"]; m["stun"] = 18
+                    self.particles.emit(m["x"], m["y"], n=10,
+                        color=[(255,150,50),(200,50,50)], spd=4, life=20, sz=5, grav=0)
+                    hit = True
+                    if m["hp"] <= 0:
+                        m["alive"] = False; m["hp"] = 0
+                        self._on_monster_die(m, room)
+                    break
+            if hit: self.projectiles.remove(proj)
 
-        # check win: all non-entry rooms cleared
-        all_clear=all(r.cleared for r in self.rooms[1:] if r.monsters)
-        if all_clear and self.big_killed>0:
-            self.result="win"
+        # Cek menang
+        if self.state["big_monsters"] >= 5:
+            self.result = "win"
+        elif all(not room.monster or not room.monster["alive"] for room in self.rooms[1:]):
+            if self.big_killed > 0:
+                self.result = "win"
 
-        # check if we got 5 big monsters total
-        if self.state["big_monsters"]>=5 and not self.result:
-            self.result="win"
+    def _boss_shoot(self, m, dist):
+        """Pola tembak berbeda tiap boss"""
+        pattern = m["pattern"]
+        bspd = 4.0 + m["scale"] * 1.5
+        dmg = int(10 * m["scale"])
+        col = tuple(min(255, c+80) for c in m["color"])
+
+        dx = self.px - m["x"]; dy = self.py - m["y"]
+        d = max(1, math.hypot(dx, dy))
+        base_angle = math.atan2(dy, dx)
+
+        if pattern == 0:
+            # Pola: 3 peluru menyebar
+            for spread in [-0.25, 0, 0.25]:
+                ang = base_angle + spread
+                m["bullets"].append({
+                    "x": m["x"], "y": m["y"],
+                    "vx": math.cos(ang)*bspd, "vy": math.sin(ang)*bspd,
+                    "r": 10, "dmg": dmg, "life": 100,
+                    "col": col
+                })
+        elif pattern == 1:
+            # Pola: spiral 8 arah
+            m["atk_phase"] += 1
+            base = math.radians(m["atk_phase"] * 45)
+            for i in range(8):
+                ang = base + math.radians(i * 45)
+                m["bullets"].append({
+                    "x": m["x"], "y": m["y"],
+                    "vx": math.cos(ang)*bspd*0.8, "vy": math.sin(ang)*bspd*0.8,
+                    "r": 9, "dmg": dmg-2, "life": 90,
+                    "col": col
+                })
+        elif pattern == 2:
+            # Pola: 5 peluru lurus ke player
+            for i in range(5):
+                delay_ang = base_angle + random.uniform(-0.15, 0.15)
+                spd2 = bspd + random.uniform(-1, 1)
+                m["bullets"].append({
+                    "x": m["x"], "y": m["y"],
+                    "vx": math.cos(delay_ang)*spd2, "vy": math.sin(delay_ang)*spd2,
+                    "r": 11, "dmg": dmg+3, "life": 110,
+                    "col": col
+                })
+        else:
+            # Pola: ring peluru kecil
+            for i in range(12):
+                ang = math.radians(i * 30 + self.frame * 2)
+                m["bullets"].append({
+                    "x": m["x"], "y": m["y"],
+                    "vx": math.cos(ang)*bspd*0.6, "vy": math.sin(ang)*bspd*0.6,
+                    "r": 7, "dmg": dmg//2, "life": 80,
+                    "col": col
+                })
 
     # ── drawing ──────────────────────────────────────────────────────────
     def draw(self, s):
+        self._draw_world(s)
         if self.result:
-            self._draw_game(s)
             self._draw_result(s)
-            return
-        self._draw_game(s)
 
-    def _draw_game(self, s):
-        ox = random.randint(-3,3) if self.shake else 0
-        oy = random.randint(-3,3) if self.shake else 0
+    def _draw_world(self, s):
+        ox = random.randint(-2,2) if self.shake else 0
+        oy = random.randint(-2,2) if self.shake else 0
+        cam_x = int(self.cam_x) + ox
+        cam_y = int(self.cam_y) + oy
 
-        cam_x = int(self.cam_x)
-        cam_y = int(self.cam_y)
-
-        # draw tiles
         s.fill(C["cave"])
-        start_tx = max(0, cam_x//TILE_SIZE-1)
-        start_ty = max(0, cam_y//TILE_SIZE-1)
-        end_tx   = min(self.MAP_W, start_tx + SW//TILE_SIZE+3)
-        end_ty   = min(self.MAP_H, start_ty + SH//TILE_SIZE+3)
 
+        # Hitung tile range yang terlihat
+        start_tx = max(0, cam_x//TS - 1)
+        start_ty = max(0, cam_y//TS - 1)
+        end_tx   = min(self.MAP_W, start_tx + SW//TS + 3)
+        end_ty   = min(self.MAP_H, start_ty + SH//TS + 3)
+
+        ptx = int(self.px // TS); pty = int(self.py // TS)
+
+        # Gambar tile
         for tx in range(start_tx, end_tx):
             for ty in range(start_ty, end_ty):
-                sx = tx*TILE_SIZE - cam_x + ox
-                sy = ty*TILE_SIZE - cam_y + oy
-                tile = self.tiles[tx][ty]
-                explored = self.explored[tx][ty]
+                sx = tx*TS - cam_x
+                sy = ty*TS - cam_y
+                if sx < -TS or sx > SW+TS or sy < -TS or sy > SH+TS: continue
 
-                if not explored:
-                    pxr(s, C["fog"], (sx, sy, TILE_SIZE, TILE_SIZE))
+                tile = self.tiles[tx][ty]
+                exp  = self.explored[tx][ty]
+
+                if not exp:
+                    pxr(s, C["fog"], (sx, sy, TS, TS))
                     continue
 
-                if tile == TILE_WALL:
-                    # stone wall with texture
-                    pxr(s, C["cavewall"], (sx, sy, TILE_SIZE, TILE_SIZE))
-                    pxr(s, C["darkstone"], (sx, sy, TILE_SIZE, TILE_SIZE), 1)
-                    # brick lines
-                    if (tx+ty)%2==0:
-                        pygame.draw.line(s, C["darkstone"],
-                            (sx+TILE_SIZE//2, sy), (sx+TILE_SIZE//2, sy+TILE_SIZE), 1)
-                    pygame.draw.line(s, C["darkstone"],
-                        (sx, sy+TILE_SIZE//2), (sx+TILE_SIZE, sy+TILE_SIZE//2), 1)
-                else:
-                    # floor
-                    base=C["cavefloor"]
-                    # subtle variation
-                    rng = ((tx*7+ty*13)%5)*3
-                    col = (base[0]+rng, base[1]+rng, base[2]+rng)
-                    pxr(s, col, (sx, sy, TILE_SIZE, TILE_SIZE))
-                    # floor cracks
-                    if (tx*3+ty*7)%11==0:
-                        pygame.draw.line(s, C["darkstone"],
-                            (sx+8, sy+10), (sx+20, sy+30), 1)
-                    if tile == TILE_ENTRY:
-                        pxr(s, (60,80,60), (sx+4, sy+4, TILE_SIZE-8, TILE_SIZE-8))
-                        pxt(s,"IN",F_SM,C["green"],sx+TILE_SIZE//2,sy+TILE_SIZE//2,center=True,shadow=False)
+                # Gambar tile sesuai tipe
+                if tile == T_WALL:
+                    self._draw_wall_tile(s, sx, sy, tx, ty)
+                elif tile == T_PILLAR:
+                    self._draw_pillar_tile(s, sx, sy)
+                elif tile in (T_FLOOR, T_ENTRY, T_CHEST):
+                    self._draw_floor_tile(s, sx, sy, tx, ty, tile)
 
-        # dim overlay for unexplored (lighter for semi-visible)
-        ptx=int(self.px//TILE_SIZE); pty=int(self.py//TILE_SIZE)
-        for tx in range(start_tx, end_tx):
-            for ty in range(start_ty, end_ty):
-                if not self.explored[tx][ty]: continue
-                d=math.hypot(tx-ptx, ty-pty)
-                if d>self.FOG_R-1:
-                    sx=tx*TILE_SIZE-cam_x+ox; sy=ty*TILE_SIZE-cam_y+oy
-                    alpha=min(220, int((d-(self.FOG_R-1))*120))
-                    fog=pygame.Surface((TILE_SIZE,TILE_SIZE),pygame.SRCALPHA)
-                    fog.fill((8,5,4,alpha))
-                    s.blit(fog,(sx,sy))
+        # Gambar obor dekorasi
+        tf = math.sin(self.frame * 0.15) * 3
+        for (twx, twy) in self.torches:
+            tsx = int(twx - cam_x)
+            tsy = int(twy - cam_y)
+            if -20 < tsx < SW+20 and -20 < tsy < SH+20:
+                ttx = int(twx // TS); tty = int(twy // TS)
+                if 0 <= ttx < self.MAP_W and 0 <= tty < self.MAP_H and self.explored[ttx][tty]:
+                    # Glow obor
+                    glow_sz = int(24 + tf)
+                    glow = pygame.Surface((glow_sz*2, glow_sz*2), pygame.SRCALPHA)
+                    pygame.draw.circle(glow, (180,100,30,50), (glow_sz,glow_sz), glow_sz)
+                    s.blit(glow, (tsx-glow_sz, tsy-glow_sz))
+                    # Obor stick
+                    pxr(s, C["brown"], (tsx-2, tsy, 4, 8))
+                    # Api
+                    flame_col = (255, int(140+tf*20), 0)
+                    pygame.draw.polygon(s, flame_col, [
+                        (tsx-3, tsy), (tsx+3, tsy),
+                        (tsx+1, tsy-int(8+tf)), (tsx-1, tsy-int(8+tf))
+                    ])
 
-        # draw torches in rooms
-        tf=self.torch_flicker
-        for room in self.rooms:
+        # Gambar monster besar di tengah ruangan
+        for room in self.rooms[1:]:
+            m = room.monster
+            if not m or not m["alive"]: continue
             if not self.explored[room.cx][room.cy]: continue
-            # torch at room corners (world coord)
-            for corner in [(room.tx+1,room.ty+1),(room.tx+room.tw-2,room.ty+1)]:
-                wx_=corner[0]*TILE_SIZE-cam_x+TILE_SIZE//2+ox
-                wy_=corner[1]*TILE_SIZE-cam_y+TILE_SIZE//2+oy
-                if -20<wx_<SW+20 and -20<wy_<SH+20:
-                    # torch glow
-                    glow=pygame.Surface((40,40),pygame.SRCALPHA)
-                    pygame.draw.circle(glow,(200,120,40,60+tf*10),(20,20),18+tf)
-                    s.blit(glow,(wx_-20,wy_-20))
-                    pxr(s,C["brown"],(wx_-2,wy_-6,4,10))
-                    pygame.draw.polygon(s,(255,180,0+tf*20),
-                        [(wx_-3,wy_-6),(wx_+3,wy_-6),(wx_,wy_-14+tf)])
+            mx = int(m["x"] - cam_x)
+            my = int(m["y"] - cam_y)
+            if -100 < mx < SW+100 and -150 < my < SH+150:
+                hp_ratio = m["hp"] / m["maxhp"]
+                draw_big_monster_centered(s, mx, my, m["color"], m["scale"], self.frame, hp_ratio)
+                if m["stun"] > 0:
+                    pxt(s, "★STUN★", F_SM, C["yellow"], mx, my-int(170*m["scale"]),
+                        center=True, shadow=True)
+            # Gambar peluru boss
+            for b in m["bullets"]:
+                bsx = int(b["x"] - cam_x)
+                bsy = int(b["y"] - cam_y)
+                if 0 < bsx < SW and 0 < bsy < SH:
+                    r = b["r"]
+                    col = b.get("col", (220,60,60))
+                    # Bullet dengan glow
+                    glow_s = pygame.Surface((r*4, r*4), pygame.SRCALPHA)
+                    pygame.draw.circle(glow_s, (*col, 80), (r*2, r*2), r*2)
+                    s.blit(glow_s, (bsx-r*2, bsy-r*2))
+                    pygame.draw.circle(s, col, (bsx, bsy), r)
+                    pygame.draw.circle(s, (255,200,100), (bsx, bsy), r//2)
+                    pygame.draw.circle(s, C["white"], (bsx, bsy), r, 1)
 
-        # draw monsters (only in explored area)
-        for room in self.rooms:
-            if not self.explored[room.cx][room.cy]: continue
-            for m in room.monsters:
-                if not m["alive"]: continue
-                mx=int(m["x"]-cam_x+ox); my=int(m["y"]-cam_y+oy)
-                if -60<mx<SW+60 and -80<my<SH+80:
-                    draw_big_monster(s, mx, my, m["color"], m["scale"])
-                    # hp bar
-                    bw=int(50*m["scale"]); bh=5
-                    hpbar(s, mx-bw//2, my-int(90*m["scale"])-4, bw, bh,
-                          m["hp"], m["maxhp"], (200,50,50))
-                    if m["stun"]>0:
-                        pxt(s,"STUN",F_SM,C["yellow"],mx,my-int(100*m["scale"]),
-                            center=True,shadow=False)
-                # monster bullets
-                for b in m["bullets"]:
-                    bsx=int(b["x"]-cam_x+ox); bsy=int(b["y"]-cam_y+oy)
-                    if 0<bsx<SW and 0<bsy<SH:
-                        pygame.draw.circle(s,(200,60,60),(bsx,bsy),b["r"])
-                        pygame.draw.circle(s,C["red"],(bsx,bsy),b["r"],1)
-
-        # draw player projectiles
+        # Gambar player projectiles
         for proj in self.projectiles:
-            px_=int(proj["x"]-cam_x+ox); py_=int(proj["y"]-cam_y+oy)
-            if 0<px_<SW and 0<py_<SH:
-                draw_small_monster(s, px_, py_, proj["variant"], 0.7)
+            px_ = int(proj["x"] - cam_x)
+            py_ = int(proj["y"] - cam_y)
+            if 0 < px_ < SW and 0 < py_ < SH:
+                draw_small_monster(s, px_, py_, proj["variant"], 0.8)
 
-        # draw particles
-        self.particles.draw(s, -cam_x+ox, -cam_y+oy)
+        # Gambar particles
+        self.particles.draw(s, -cam_x, -cam_y)
 
-        # draw friends
-        ha=self.state.get("has_friend_a"); hb=self.state.get("has_friend_b")
-        if ha: draw_friend_a(s, self.px-cam_x-40+ox, self.py-cam_y+oy, self.frame)
-        if hb: draw_friend_b(s, self.px-cam_x+40+ox, self.py-cam_y+oy, self.frame)
+        # Gambar teman
+        ha = self.state.get("has_friend_a"); hb = self.state.get("has_friend_b")
+        if ha: draw_friend_a(s, self.px-cam_x-38, self.py-cam_y, self.frame)
+        if hb: draw_friend_b(s, self.px-cam_x+38, self.py-cam_y, self.frame)
 
-        # draw player
-        sx=int(self.px-cam_x+ox); sy=int(self.py-cam_y+oy)
-        draw_player(s, sx, sy, frame=self.frame,
-                    sword=self.sword_anim>0, ult=self.ult_anim>0)
+        # Gambar player (berkedip saat invincible)
+        sx_ = int(self.px - cam_x); sy_ = int(self.py - cam_y)
+        if self.inv <= 0 or (self.frame//4) % 2 == 0:
+            draw_player(s, sx_, sy_, frame=self.frame,
+                       sword=self.sword_anim > 0, ult=self.ult_anim > 0)
 
-        # sword range circle
-        if self.sword_anim>0:
-            pygame.draw.circle(s,(255,220,0),(sx,sy),self.SWORD_R,2)
-        if self.ult_anim>0:
-            surf2=pygame.Surface((SW,SH),pygame.SRCALPHA)
-            pygame.draw.circle(surf2,(255,200,0,50),(sx,sy),self.ULT_R)
-            s.blit(surf2,(0,0))
-            pygame.draw.circle(s,(255,220,80),(sx,sy),self.ULT_R,3)
+        # Sword range visual
+        if self.sword_anim > 0:
+            pygame.draw.circle(s, (255,220,0), (sx_, sy_), self.SWORD_R, 2)
+        if self.ult_anim > 0:
+            ult_surf = pygame.Surface((SW, SH), pygame.SRCALPHA)
+            pygame.draw.circle(ult_surf, (255,200,0,45), (sx_, sy_), self.ULT_R)
+            s.blit(ult_surf, (0,0))
+            pygame.draw.circle(s, (255,220,80), (sx_, sy_), self.ULT_R, 3)
 
-        # ── HUD ─────────────────────────────────────────
-        # dark HUD bar top
-        pxr(s,(10,8,6),(0,0,SW,60))
-        pxr(s,(40,30,20),(0,60,SW,2))
+        # ── FOG OF WAR overlay ──────────────────────────────────────────
+        # Buat efek kabut gelap nyata dengan gradient melingkar
+        fog_surf = pygame.Surface((SW, SH), pygame.SRCALPHA)
+        fog_surf.fill((0, 0, 0, 255))  # Mulai dari gelap total
 
-        bm=self.state["big_monsters"]; am=self.state["small_monsters"]
-        killed=sum(1 for r in self.rooms for m in r.monsters if not m["alive"])
-        total=sum(len(r.monsters) for r in self.rooms[1:])
-        hpbar(s,10,10,160,12,bm,5,(200,80,80))
-        pxt(s,f"Monster Takluk: {bm}/5",F_SM,C["white"],10,26)
-        pxt(s,f"Ammo: {am}  Terbunuh sesi: {killed}/{total}",F_SM,C["cyan"],10,42)
-        pxt(s,f"[J]=Pedang(CD:{self.sword_cd}) [K]=Ult(CD:{self.ult_cd}) [M]=Tembak(CD:{self.shoot_cd})",
-            F_SM,C["yellow"],SW//2,6,center=True)
-        pxt(s,"[X]=Kembali",F_SM,C["orange"],SW-130,42)
+        # Potong cahaya di sekitar player
+        light_radius = int(self.LIGHT_R * TS)
+        # Inner bright zone
+        for ring in range(light_radius, 0, -4):
+            alpha = max(0, int(200 * (1 - ring/light_radius) * (ring/light_radius)**0.4))
+            alpha = 255 - alpha
+            if alpha < 0: alpha = 0
+            pygame.draw.circle(fog_surf, (0,0,0,alpha), (sx_, sy_), ring)
 
-        # minimap
+        # Buat tepi gradient lebih halus
+        for i in range(12):
+            r2 = light_radius - i*6
+            if r2 <= 0: break
+            a = min(255, int(i * 20))
+            pygame.draw.circle(fog_surf, (0,0,0,a), (sx_, sy_), r2)
+
+        # Tambah cahaya obor sekitar
+        for (twx, twy) in self.torches:
+            tsx2 = int(twx - cam_x); tsy2 = int(twy - cam_y)
+            if -80 < tsx2 < SW+80 and -80 < tsy2 < SH+80:
+                ttx2 = int(twx // TS); tty2 = int(twy // TS)
+                if 0 <= ttx2 < self.MAP_W and 0 <= tty2 < self.MAP_H and self.explored[ttx2][tty2]:
+                    torch_r = int(TS * 2.5)
+                    for tr in range(torch_r, 0, -6):
+                        a2 = max(0, 255 - int(220 * (1-tr/torch_r)**0.5))
+                        pygame.draw.circle(fog_surf, (0,0,0,a2), (tsx2, tsy2), tr)
+
+        s.blit(fog_surf, (0,0))
+
+        # ── HUD ─────────────────────────────────────────────────────────
+        pxr(s, (10,6,3,220), (0,0,SW,58))
+        pxr(s, (50,35,15), (0,58,SW,2))
+
+        bm = self.state["big_monsters"]
+        am = self.state["small_monsters"]
+        killed = sum(1 for r in self.rooms[1:] if r.monster and not r.monster["alive"])
+        total_rooms = len([r for r in self.rooms[1:] if r.monster])
+
+        # HP Player bar
+        hpbar(s, 10, 8, 150, 12, self.php, self.PHP_MAX, (80,200,80))
+        pxt(s, f"HP: {self.php}/{self.PHP_MAX}", F_SM, C["white"], 10, 24)
+
+        # Progress bar
+        hpbar(s, 170, 8, 130, 12, bm, 5, (200,80,80))
+        pxt(s, f"Boss: {bm}/5  ({killed}/{total_rooms} ruangan)", F_SM, C["cyan"], 170, 24)
+
+        pxt(s, f"Ammo:{am} [J]Pedang({self.sword_cd}) [K]Ult({self.ult_cd}) [M]Tembak({self.shoot_cd})",
+            F_SM, C["yellow"], 10, 42)
+        pxt(s, "[X]=Kembali", F_SM, C["orange"], SW-130, 8)
+
+        # Minimap kecil
         self._draw_minimap(s)
 
-    def _draw_minimap(self, s):
-        mm_scale=3
-        mm_w=self.MAP_W*mm_scale; mm_h=self.MAP_H*mm_scale
-        mm_x=SW-mm_w-8; mm_y=SH-mm_h-8
+        # Indikator ruangan
+        current_room = None
+        for room in self.rooms:
+            if abs(self.px - room.cx*TS) < room.w*TS//2+10 and \
+               abs(self.py - room.cy*TS) < room.h*TS//2+10:
+                current_room = room
+                break
+        if current_room and current_room.id > 0:
+            m = current_room.monster
+            if m and m["alive"]:
+                # Boss HP bar besar di atas layar
+                bw2 = 300; bh2 = 16
+                bx2 = SW//2 - bw2//2; by2 = 62
+                pxr(s, (30,10,10), (bx2-2, by2-2, bw2+4, bh2+4))
+                hpbar(s, bx2, by2, bw2, bh2, m["hp"], m["maxhp"], (220,40,40))
+                pxr(s, (200,50,50), (bx2, by2, bw2, bh2), 2)
+                pxt(s, f"BOSS HP: {m['hp']}/{m['maxhp']}", F_SM, C["red"],
+                    SW//2, by2+bh2+4, center=True)
+            elif current_room.cleared:
+                pxt(s, "✓ RUANGAN BERSIH", F_SM, C["green"], SW//2, 66, center=True)
 
-        mm=pygame.Surface((mm_w,mm_h))
-        mm.fill((5,3,2))
+    def _draw_wall_tile(self, s, sx, sy, tx, ty):
+        """Gambar dinding dengan tekstur bata gaya RPG"""
+        # Warna bata bergradien
+        base = C["cavewall"]
+        pxr(s, base, (sx, sy, TS, TS))
+        # Garis bata horizontal
+        brick_y = sy + TS//3
+        brick_y2 = sy + 2*TS//3
+        pygame.draw.line(s, C["darkstone"], (sx, brick_y), (sx+TS, brick_y), 1)
+        pygame.draw.line(s, C["darkstone"], (sx, brick_y2), (sx+TS, brick_y2), 1)
+        # Garis bata vertikal (verseting tiap baris)
+        mid_x = sx + TS//2 + ((tx+ty)%2) * (TS//4)
+        pygame.draw.line(s, C["darkstone"], (mid_x, sy), (mid_x, brick_y), 1)
+        pygame.draw.line(s, C["darkstone"],
+            (sx + (TS//4 if (tx+ty)%2==0 else 3*TS//4), brick_y),
+            (sx + (TS//4 if (tx+ty)%2==0 else 3*TS//4), brick_y2), 1)
+        # Shadow tepi bawah dan kanan
+        pygame.draw.line(s, C["darkstone"], (sx, sy+TS-1), (sx+TS, sy+TS-1), 2)
+        pygame.draw.line(s, C["darkstone"], (sx+TS-1, sy), (sx+TS-1, sy+TS), 2)
+        # Highlight tepi atas dan kiri
+        pygame.draw.line(s, C["walledge"], (sx, sy), (sx+TS, sy), 1)
+        pygame.draw.line(s, C["walledge"], (sx, sy), (sx, sy+TS), 1)
+
+    def _draw_floor_tile(self, s, sx, sy, tx, ty, tile):
+        """Gambar lantai dengan tekstur kayu/batu"""
+        # Warna lantai dengan variasi subtle
+        rng = ((tx*5+ty*11)%7) * 2
+        col = (C["roomfloor"][0]+rng, C["roomfloor"][1]+rng//2, C["roomfloor"][2])
+        pxr(s, col, (sx, sy, TS, TS))
+
+        # Garis kayu horizontal
+        if (ty)%2 == 0:
+            pygame.draw.line(s, C["darkstone"], (sx, sy+TS-1), (sx+TS, sy+TS-1), 1)
+        # Grain kayu vertikal tipis
+        if (tx*3+ty*7)%8 == 0:
+            pygame.draw.line(s, C["darkstone"], (sx+TS//3, sy), (sx+TS//3+2, sy+TS), 1)
+
+        if tile == T_ENTRY:
+            # Tanda bintang entry
+            pxr(s, (50,80,50), (sx+4, sy+4, TS-8, TS-8))
+            pxt(s, "◉", F_SM, C["green"], sx+TS//2, sy+TS//2, center=True, shadow=False)
+        elif tile == T_CHEST:
+            pxr(s, C["brown"], (sx+4, sy+8, TS-8, TS-12))
+            pxr(s, C["gold"], (sx+4, sy+8, TS-8, TS-12), 2)
+
+    def _draw_pillar_tile(self, s, sx, sy):
+        """Gambar pilar"""
+        pxr(s, C["stone"], (sx, sy, TS, TS))
+        pxr(s, C["dkgray"], (sx+4, sy+4, TS-8, TS-8))
+        pxr(s, C["darkstone"], (sx+4, sy+4, TS-8, TS-8), 2)
+        # Detail pilar
+        pygame.draw.line(s, C["ltgray"], (sx+TS//2, sy+4), (sx+TS//2, sy+TS-4), 1)
+
+    def _draw_minimap(self, s):
+        mm = 2  # pixel per tile
+        mmw = self.MAP_W * mm; mmh = self.MAP_H * mm
+        mmx = SW - mmw - 6; mmy = SH - mmh - 6
+
+        surf = pygame.Surface((mmw, mmh))
+        surf.fill((4,2,1))
         for tx in range(self.MAP_W):
             for ty in range(self.MAP_H):
                 if not self.explored[tx][ty]: continue
-                t=self.tiles[tx][ty]
-                col=(5,3,2) if t==TILE_WALL else (60,50,40)
-                pxr(mm,col,(tx*mm_scale,ty*mm_scale,mm_scale,mm_scale))
-        # monsters on minimap
-        for room in self.rooms:
-            for m in room.monsters:
-                if m["alive"] and self.explored[room.cx][room.cy]:
-                    mmx=int(m["x"]//TILE_SIZE)*mm_scale
-                    mmy=int(m["y"]//TILE_SIZE)*mm_scale
-                    pygame.draw.rect(mm,(200,50,50),(mmx,mmy,mm_scale,mm_scale))
-        # player dot
-        pmx=int(self.px//TILE_SIZE)*mm_scale; pmy=int(self.py//TILE_SIZE)*mm_scale
-        pygame.draw.rect(mm,(100,200,255),(pmx,pmy,mm_scale+1,mm_scale+1))
+                t = self.tiles[tx][ty]
+                col = (4,2,1) if t == T_WALL else \
+                      (55,42,30) if t in (T_FLOOR,T_ENTRY,T_CHEST) else (30,25,20)
+                pygame.draw.rect(surf, col, (tx*mm, ty*mm, mm, mm))
+        # Monster dots
+        for room in self.rooms[1:]:
+            if room.monster and room.monster["alive"] and room.visited:
+                rx = room.cx * mm; ry = room.cy * mm
+                pygame.draw.rect(surf, (220,50,50), (rx, ry, mm+1, mm+1))
+        # Player dot
+        px2 = int(self.px // TS) * mm
+        py2 = int(self.py // TS) * mm
+        pygame.draw.rect(surf, (100,220,255), (px2, py2, mm+1, mm+1))
 
-        pxr(s,(20,15,10),(mm_x-2,mm_y-2,mm_w+4,mm_h+4))
-        s.blit(mm,(mm_x,mm_y))
-        pygame.draw.rect(s,(80,60,40),(mm_x-2,mm_y-2,mm_w+4,mm_h+4),2)
-        pxt(s,"PETA",F_SM,C["orange"],mm_x+mm_w//2,mm_y-16,center=True)
+        pxr(s, (15,10,5), (mmx-2, mmy-2, mmw+4, mmh+4))
+        s.blit(surf, (mmx, mmy))
+        pygame.draw.rect(s, (80,55,30), (mmx-2, mmy-2, mmw+4, mmh+4), 2)
+        pxt(s, "PETA", F_SM, C["orange"], mmx+mmw//2, mmy-16, center=True)
 
     def _draw_result(self, s):
-        dim=pygame.Surface((SW,SH),pygame.SRCALPHA); dim.fill((0,0,0,140)); s.blit(dim,(0,0))
-        if self.result=="win":
-            pxt(s,"SEMUA MONSTER TAKLUK!",F_XL,C["yellow"],SW//2,SH//2-20,center=True)
-            pxt(s,f"Total: {self.state['big_monsters']}/5 monster besar",F_MD,C["white"],SW//2,SH//2+30,center=True)
+        dim = pygame.Surface((SW,SH), pygame.SRCALPHA); dim.fill((0,0,0,160)); s.blit(dim,(0,0))
+        if self.result == "win":
+            pxt(s, "SEMUA BOSS TAKLUK!", F_XL, C["yellow"], SW//2, SH//2-30, center=True)
+            pxt(s, f"Monster besar: {self.state['big_monsters']}/5", F_MD, C["white"], SW//2, SH//2+20, center=True)
         else:
-            pxt(s,"Kembali ke Map...",F_XL,C["red"],SW//2,SH//2,center=True)
-        pxt(s,"ENTER untuk lanjut",F_MD,C["ltgray"],SW//2,SH//2+70,center=True)
+            pxt(s, "KAU JATUH...", F_XL, C["red"], SW//2, SH//2-20, center=True)
+        pxt(s, "ENTER untuk lanjut", F_MD, C["ltgray"], SW//2, SH//2+70, center=True)
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  BIG MONSTER / BOSS  – explore + battle-box duel (for demon king only now)
+#  BIG MONSTER / BOSS FINAL  – explore + battle-box duel
 # ════════════════════════════════════════════════════════════════════════════
 class BigBattle:
     def __init__(self,state,is_dk=False):
@@ -1333,6 +1635,9 @@ class Game:
                 if self.sub.phase in("done","full"):
                     if k in(pygame.K_RETURN,pygame.K_z) or self.sub.result=="full":
                         self._end_sub()
+                elif self.sub.phase == "lost":
+                    if k in(pygame.K_RETURN,pygame.K_z):
+                        self._end_sub()
             elif isinstance(self.sub,DungeonCave):
                 self.sub.handle_key(k)
                 if self.sub.result and k in(pygame.K_RETURN,pygame.K_z):
@@ -1412,6 +1717,8 @@ class Game:
             elif scene=="hunting_small":
                 if sc.result=="full":
                     self.dialog.show("System","Monster sudah 50/50! Cukup untuk melawan Raja Iblis. Kembali ke Map.")
+                elif sc.result=="lost":
+                    self.dialog.show("System",f"Kau pingsan! Tetap semangat! Total: {sm}/50")
                 else:
                     self.dialog.show("System",f"Area bersih! Total: {sm}/50")
                 self.state["flags"]["_bw"]=True
@@ -1485,7 +1792,7 @@ class Game:
             "meet_b_setup":("Narator","Di arena kota ada B – monster tamer terkuat. Kalahkan dia dalam pertandingan untuk mengajaknya!",["Mulai pertandingan!","Nanti saja"]),
             "meet_b":("B","Hmph... Kau cukup kuat. Mengapa kau melawanku?",["Ajak B – kalahkan Raja Iblis!","Tidak perlu"]),
             "hunting_small":("Narator",f"Hutan monster kecil! Saat ini: {sm}/50. Tebas dengan pedang [J/K] lalu sentuh monster kuning untuk menangkapnya! [ENTER] Mulai | [X] Kembali"),
-            "hunting_big":("Narator",f"Gua Kastil Monster Besar! Saat ini: {bm}/5. Jelajahi dungeon bercabang, bunuh monster dengan pedang [J/K] atau tembak [M]! WASD=gerak. [ENTER] Masuk | [X] Kembali"),
+            "hunting_big":("Narator",f"Gua Kastil Monster Besar! Saat ini: {bm}/5. Jelajahi dungeon labirin gelap, setiap ruangan ada BOSS di tengah! WASD=gerak J=Pedang K=Ultimate M=Tembak monster. [ENTER] Masuk | [X] Kembali"),
             "pre_final":("Kael",f"A: {'Bersama' if ha else 'Tidak ada'}. B: {'Bersama' if hb else 'Tidak ada'}. Monster: {sm}/50 kecil, {bm}/5 besar. Kastil Raja Iblis ada di depan!"),
             "final_battle":("Narator","RAJA IBLIS MALACHAR! Di battle: dodge peluru, lempar monster kecil [J/K] untuk menyerang! [ENTER] Mulai | [X] Kembali"),
             "ending_good":("Narator","LUAR BIASA! Raja Iblis Malachar jatuh! Dunia Arathos damai. Kael dan sahabat-sahabatnya menjadi pahlawan legendaris! ★ ENDING TERBAIK ★"),
@@ -1499,9 +1806,9 @@ class Game:
     # ── scene renderers ──────────────────────────────────────────────────
     def _s_intro(self):
         screen.fill(C["black"])
-        pxt(screen,"DEMON KING QUEST",F_TTL,C["red"],SW//2,SH//2-40,center=True)
+        pxt(screen,"DEMON KING QUEST v5",F_TTL,C["red"],SW//2,SH//2-40,center=True)
         pxt(screen,"Tekan ENTER untuk mulai",F_MD,C["white"],SW//2,SH//2+40,center=True)
-        if not self.dialog.visible: self.dialog.show("","Selamat datang di Demon King Quest!")
+        if not self.dialog.visible: self.dialog.show("","Selamat datang di Demon King Quest v5!")
         self.dialog.update();self.dialog.draw(screen)
 
     def _s_title(self):
@@ -1510,7 +1817,7 @@ class Game:
         for _ in range(80): pygame.draw.circle(screen,C["white"],(random.randint(0,SW),random.randint(0,SH//2)),random.randint(1,2))
         random.seed()
         pxt(screen,"DEMON KING QUEST",F_TTL,C["red"],SW//2,80,center=True)
-        pxt(screen,"～ Quest of Legends ～",F_MD,C["orange"],SW//2,130,center=True)
+        pxt(screen,"～ Quest of Legends v5 ～",F_MD,C["orange"],SW//2,130,center=True)
         draw_player(screen,SW//2-120,300);draw_friend_a(screen,SW//2,300);draw_friend_b(screen,SW//2+120,300)
         draw_demon_king(screen,SW//2,490)
         for i,lbl in enumerate(["New Game","Load Game","Quit"]):
@@ -1624,30 +1931,36 @@ class Game:
         if self.sub: self.sub.update();self.sub.draw(screen)
         else:
             screen.fill(C["cave"])
-            # cave entrance screen
-            for gx in range(0,SW,48):
-                for gy in range(0,SH,48):
-                    if (gx//48+gy//48)%2==0:
-                        pxr(screen,C["cavewall"],(gx,gy,48,48))
-                    pygame.draw.rect(screen,C["darkstone"],(gx,gy,48,48),1)
-            # torches
-            for tx in [100,300,500,700]:
-                pxr(screen,C["brown"],(tx-2,SH//2-30,4,20))
-                pygame.draw.polygon(screen,(255,160,0),[(tx-4,SH//2-30),(tx+4,SH//2-30),(tx,SH//2-46)])
-                glow=pygame.Surface((60,60),pygame.SRCALPHA)
-                pygame.draw.circle(glow,(200,120,40,50),(30,30),28)
-                screen.blit(glow,(tx-30,SH//2-58))
-            pxt(screen,"GUA KASTIL MONSTER",F_LG,C["orange"],SW//2,30,center=True)
-            pxt(screen,f"Total: {self.state['big_monsters']}/5",F_MD,C["white"],SW//2,70,center=True)
-            pxt(screen,"[ENTER] Masuk Dungeon!",F_LG,C["cyan"],SW//2,SH//2-20,center=True)
-            pxt(screen,"WASD=gerak | J=Pedang | K=Ultimate | M=Tembak monster",F_SM,C["yellow"],SW//2,SH//2+20,center=True)
-            pxt(screen,f"Ammo tersedia: {self.state['small_monsters']} monster kecil",F_SM,C["cyan"],SW//2,SH//2+46,center=True)
+            # Cave entrance screen dengan visual gaya RPG
+            for gx in range(0,SW,32):
+                for gy in range(0,SH,32):
+                    t_x = gx//32; t_y = gy//32
+                    if (t_x+t_y)%3 != 0:
+                        pxr(screen,C["cavewall"],(gx,gy,32,32))
+                    # Bata lines
+                    pygame.draw.line(screen,C["darkstone"],(gx,gy+16),(gx+32,gy+16),1)
+                    pygame.draw.rect(screen,C["darkstone"],(gx,gy,32,32),1)
+            # Obor dekorasi
+            for tx in [80,240,400,560,720]:
+                tf2 = math.sin(pygame.time.get_ticks()/200)*3
+                pxr(screen,C["brown"],(tx-2,SH//2-50,4,20))
+                fl_col=(255,int(140+tf2*15),0)
+                pygame.draw.polygon(screen,fl_col,[(tx-4,SH//2-50),(tx+4,SH//2-50),(tx,SH//2-int(68+tf2))])
+                glow=pygame.Surface((50,50),pygame.SRCALPHA)
+                pygame.draw.circle(glow,(200,120,40,50),(25,25),22)
+                screen.blit(glow,(tx-25,SH//2-70))
+            pxt(screen,"GUA KASTIL – DUNGEON LABIRIN",F_LG,C["orange"],SW//2,30,center=True)
+            pxt(screen,f"Monster Besar Terkumpul: {self.state['big_monsters']}/5",F_MD,C["white"],SW//2,70,center=True)
+            pxt(screen,"[ENTER] Masuk Dungeon Labirin!",F_LG,C["cyan"],SW//2,SH//2-30,center=True)
+            pxt(screen,"Setiap ruangan punya BOSS di tengah!",F_SM,C["yellow"],SW//2,SH//2+10,center=True)
+            pxt(screen,"WASD=gerak | J=Pedang | K=Ultimate | M=Tembak",F_SM,C["ltgray"],SW//2,SH//2+34,center=True)
+            pxt(screen,f"Ammo: {self.state['small_monsters']} monster kecil",F_SM,C["cyan"],SW//2,SH//2+58,center=True)
             pxt(screen,"[X] Kembali ke Map",F_SM,C["orange"],8,SH-28)
-            draw_big_monster(screen,SW//2,SH//2+130)
+            draw_big_monster_centered(screen,SW//2,SH//2+160,scale=1.2,frame=pygame.time.get_ticks()//16)
             ha=self.state["has_friend_a"];hb=self.state["has_friend_b"]
-            if ha: draw_friend_a(screen,SW//2-80,SH//2+130)
-            if hb: draw_friend_b(screen,SW//2+80,SH//2+130)
-            draw_player(screen,SW//2-130,SH//2+130,sword=True)
+            if ha: draw_friend_a(screen,SW//2-100,SH//2+140)
+            if hb: draw_friend_b(screen,SW//2+100,SH//2+140)
+            draw_player(screen,SW//2-140,SH//2+140,sword=True)
         self.dialog.update();self.dialog.draw(screen)
 
     def _s_pre_final(self):
