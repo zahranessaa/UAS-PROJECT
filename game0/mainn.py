@@ -50,7 +50,7 @@ C = {
 }
 
 screen = pygame.display.set_mode((SW,SH))
-pygame.display.set_caption("Demon King Quest v5")
+pygame.display.set_caption("Demon King Quest")
 clock  = pygame.time.Clock()
 
 def mkf(s): return pygame.font.SysFont("couriernew",s,bold=True)
@@ -2177,9 +2177,9 @@ class Game:
     # ── scene renderers ──────────────────────────────────────────────────
     def _s_intro(self):
         screen.fill(C["black"])
-        pxt(screen,"DEMON KING QUEST v5",F_TTL,C["red"],SW//2,SH//2-40,center=True)
+        pxt(screen,"DEMON KING QUEST",F_TTL,C["red"],SW//2,SH//2-40,center=True)
         pxt(screen,"Tekan ENTER untuk mulai",F_MD,C["white"],SW//2,SH//2+40,center=True)
-        if not self.dialog.visible: self.dialog.show("","Selamat datang di Demon King Quest v5!")
+        if not self.dialog.visible: self.dialog.show("","Selamat datang di Demon King Quest!")
         self.dialog.update();self.dialog.draw(screen)
 
     def _s_title(self):
@@ -2188,7 +2188,7 @@ class Game:
         for _ in range(80): pygame.draw.circle(screen,C["white"],(random.randint(0,SW),random.randint(0,SH//2)),random.randint(1,2))
         random.seed()
         pxt(screen,"DEMON KING QUEST",F_TTL,C["red"],SW//2,80,center=True)
-        pxt(screen,"～ Quest of Legends v5 ～",F_MD,C["orange"],SW//2,130,center=True)
+        pxt(screen,"～ Quest of Legends",F_MD,C["orange"],SW//2,130,center=True)
         draw_player(screen,SW//2-120,300);draw_friend_a(screen,SW//2,300);draw_friend_b(screen,SW//2+120,300)
         draw_demon_king(screen,SW//2,490)
         for i,lbl in enumerate(["New Game","Load Game","Quit"]):
