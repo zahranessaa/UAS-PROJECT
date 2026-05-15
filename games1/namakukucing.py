@@ -8,11 +8,11 @@ except:
     _AUDIO = False
 
 # ==========================================
-# SETUP LAYAR FULLSCREEN
+# SETUP LAYAR 
 # ==========================================
-infoObj = pygame.display.Info()
-W, H = infoObj.current_w, infoObj.current_h
-scr = pygame.display.set_mode((W, H), pygame.FULLSCREEN)
+W, H = 1280, 720 
+flags = pygame.FULLSCREEN | pygame.SCALED
+scr = pygame.display.set_mode((W, H), flags)
 pygame.display.set_caption("Demon King Quest")
 clk = pygame.time.Clock()
 FPS = 60
@@ -37,7 +37,10 @@ F24 = mkfont(int(H*0.045)); F48 = mkfont(int(H*0.08))
 # PENGATURAN & AUDIO
 # ==========================================
 class Config:
-    SFX_VOL = 0.5; BGM_VOL = 0.5
+    SFX_VOL = 0.5
+    BGM_VOL = 0.5
+    FULLSCREEN = True
+
 cfg = Config()
 
 def play_tone(freq, ms):
@@ -55,14 +58,15 @@ def play_bgm():
     if _AUDIO:
         try:
             pygame.mixer.music.load("lagu.mp3")
-            pygame.mixer.music.set_volume(cfg.BGM_VOL); pygame.mixer.music.play(-1)
+            pygame.mixer.music.set_volume(cfg.BGM_VOL)
+            pygame.mixer.music.play(-1)
         except: pass
 
 def update_bgm_vol():
     if _AUDIO: pygame.mixer.music.set_volume(cfg.BGM_VOL)
 
 # ==========================================
-# LOAD GAMBAR
+# LOAD GAMBAR (Fallback Otomatis)
 # ==========================================
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -71,7 +75,7 @@ def load_img(name, size, fallback_col):
     try:
         img = pygame.image.load(path).convert_alpha()
         return pygame.transform.scale(img, size)
-    except:
+    except Exception as e:
         surf = pygame.Surface(size, pygame.SRCALPHA)
         pygame.draw.rect(surf, fallback_col, (0, 0, size[0], size[1]), border_radius=8)
         return surf
@@ -88,7 +92,7 @@ img_boss = load_img("boss.png", (sz_b, sz_b), RD)
 img_sideboss = load_img("sideboss.png", (sz_sb, sz_sb), PU)
 img_ally = load_img("ally.png", (int(H*0.04), int(H*0.04)), CY)
 
-# Membuat gambar peluru bentuk kapsul lonjong
+# Gambar Peluru Kapsul
 sz_peluru = (int(H*0.04), int(H*0.015))
 try:
     img_peluru = pygame.image.load(os.path.join(BASE_PATH, "peluru.png")).convert_alpha()
@@ -102,7 +106,7 @@ img_m_normal = tint_image(img_monster, YL)
 img_m_tank = tint_image(img_monster, BL)
 img_m_fast = tint_image(img_monster, RD)
 
-# ASET MAP BIOMA
+# ASET MAP (Pohon, Bunga, Kaktus, dll)
 sz_tree = (int(H*0.12), int(H*0.18)); sz_flower = (int(H*0.04), int(H*0.04))
 img_pohon = load_img("pohon.png", (120,120), (20, 100, 20))
 img_bunga = load_img("bunga.png", sz_flower, (255, 100, 200))
@@ -126,7 +130,7 @@ def draw_dashed_line(surf, color, start_pos, end_pos, width=3, dash_length=15):
             pygame.draw.line(surf, color, (sx, sy), (ex, ey), width)
 
 # ==========================================
-# KELAS ENTITAS & SISTEM COMBAT
+# KELAS ENTITAS & PLAYER
 # ==========================================
 class Entitas:
     def __init__(self, x, y, img):
@@ -154,7 +158,7 @@ class Player(Entitas):
     def __init__(self, x, y):
         super().__init__(x, y, img_player)
         self.max_hp = 100; self.hp = 100
-        self.hp_regen = 0.04 # Regen HP (sekitar 2.4 HP per detik)
+        self.hp_regen = 0.04 
         self.base_speed = H * 0.007; self.speed_mult = 1.0
         self.slash_dmg = 10; self.slash_cd_max = 25
         self.lightning_cd_max = 120; self.slash_radius = H * 0.15
@@ -212,10 +216,7 @@ class Player(Entitas):
         if self.cd_lightning > 0: self.cd_lightning -= 1
         if self.anim_slash > 0: self.anim_slash -= 1
         if self.invuln > 0: self.invuln -= 1
-        
-        # SISTEM REGEN HP
-        if 0 < self.hp < self.max_hp:
-            self.hp = min(self.max_hp, self.hp + self.hp_regen)
+        if 0 < self.hp < self.max_hp: self.hp = min(self.max_hp, self.hp + self.hp_regen)
 
     def draw(self, surf, cx=0, cy=0):
         img = self.img if self.facing_right else pygame.transform.flip(self.img, True, False)
@@ -275,14 +276,13 @@ class Peluru(Entitas):
     def __init__(self, x, y, img, vx, vy, is_player):
         super().__init__(x, y, img)
         self.vx, self.vy = vx, vy; self.is_player = is_player
-        # Rotasi Peluru!
         angle = math.degrees(math.atan2(-vy, vx))
         self.rotated_img = pygame.transform.rotate(self.img, angle)
         
     def gerak(self):
         self.x += self.vx; self.y += self.vy
         self.update_hitbox()
-        
+
     def draw(self, surf, cx=0, cy=0):
         draw_rect = self.rotated_img.get_rect(center=(self.x - cx, self.y - cy))
         surf.blit(self.rotated_img, draw_rect)
@@ -350,7 +350,7 @@ class Dialog:
         if self.done: txt(surf, "▼ Enter/Klik", F14, YL, bx+bw-140, by+bh-30)
 
 STORY = {
-    "start": ("KAEL", "Ini petanya. Setiap wilayah memiliki medan yang berbeda. Tahan serangan monster hingga Side Boss muncul dan kalahkan dia!"),
+    "start": ("KAEL", "Pohon dan bebatuan tidak bisa ditembus. Manfaatkan alam untuk bersembunyi dari musuh! Tahan 90 Detik untuk memanggil Side Boss."),
     "hutan_masuk": ("KAEL", "Ini Hutan Pinus. Pohon-pohonnya bisa melindungiku dari peluru musuh."),
     "gurun_masuk": ("KAEL", "Gurun Wild West. Hati-hati jangan sampai mentok di kaktus raksasa itu!"),
     "rawa_masuk": ("KAEL", "Rawa Gelap... Pohon mati ini sangat keras, aku bisa menggunakannya sebagai tembok."),
@@ -433,9 +433,7 @@ class Game:
         self.obstacles = [o for o in self.obstacles if math.hypot(o.x - ww//2, o.y - wh//2) > H*0.2]
 
     def set_story(self, key):
-        self.active_story_key = key
-        self.dlg.set(*STORY[key])
-        self.state = "STORY"
+        self.active_story_key = key; self.dlg.set(*STORY[key]); self.state = "STORY"
 
     def save_game(self):
         data = {
@@ -497,34 +495,31 @@ class Game:
             clk.tick(FPS)
 
     def handle_input(self, ev):
+        global scr  
+        
         if ev.type == pygame.MOUSEMOTION:
             mx, my = ev.pos
             if self.state == "TITLE":
                 has_save = os.path.exists(SAVE_FILE)
                 opts = ["Mulai Baru", "Lanjutkan Game", "Pengaturan", "Keluar"] if has_save else ["Mulai Baru", "Pengaturan", "Keluar"]
                 for i in range(len(opts)):
-                    rect = pygame.Rect(W//2 - W*0.2, H*0.45 + i*(H*0.08) - H*0.03, W*0.4, H*0.06)
-                    if rect.collidepoint(mx, my):
+                    if pygame.Rect(W//2 - W*0.2, H*0.45 + i*(H*0.08) - H*0.03, W*0.4, H*0.06).collidepoint(mx, my):
                         if self.sel != i: play_tone(400, 50)
                         self.sel = i
             elif self.state == "OPTIONS":
-                for i in range(3):
-                    rect = pygame.Rect(W//2 - W*0.2, H*0.4 + i*(H*0.08) - H*0.03, W*0.4, H*0.06)
-                    if rect.collidepoint(mx, my):
+                for i in range(4):
+                    if pygame.Rect(W//2 - W*0.2, H*0.4 + i*(H*0.08) - H*0.03, W*0.4, H*0.06).collidepoint(mx, my):
                         if self.sel != i: play_tone(400, 50)
                         self.sel = i
             elif self.state == "PAUSE":
                 for i in range(2):
-                    rect = pygame.Rect(W//2 - W*0.2, H*0.5 + i*(H*0.1) - H*0.03, W*0.4, H*0.06)
-                    if rect.collidepoint(mx, my):
+                    if pygame.Rect(W//2 - W*0.2, H*0.5 + i*(H*0.1) - H*0.03, W*0.4, H*0.06).collidepoint(mx, my):
                         if self.sel != i: play_tone(400, 50)
                         self.sel = i
             elif self.state == "LEVEL_UP":
+                box_w, box_h = W*0.25, H*0.3; by = H*0.4
                 for i in range(3):
-                    box_w, box_h = W*0.25, H*0.3
-                    bx = W*0.1 + i * (box_w + W*0.05); by = H*0.4
-                    rect = pygame.Rect(bx, by, box_w, box_h)
-                    if rect.collidepoint(mx, my):
+                    if pygame.Rect(W*0.1 + i * (box_w + W*0.05), by, box_w, box_h).collidepoint(mx, my):
                         if self.sel != i: play_tone(400, 50)
                         self.sel = i
 
@@ -536,8 +531,7 @@ class Game:
                 opts = ["Mulai Baru", "Lanjutkan Game", "Pengaturan", "Keluar"] if has_save else ["Mulai Baru", "Pengaturan", "Keluar"]
                 for i in range(len(opts)):
                     if pygame.Rect(W//2 - W*0.2, H*0.45 + i*(H*0.08) - H*0.03, W*0.4, H*0.06).collidepoint(mx, my):
-                        self.sel = i
-                        play_tone(600, 100)
+                        self.sel = i; play_tone(600, 100)
                         if self.sel == 0: 
                             self.ammo = 0; self.player = Player(W//2, H//2)
                             self.cleared_nodes = []; self.current_node_id = -1; self.companions = []
@@ -548,20 +542,21 @@ class Game:
                         break
             
             elif self.state == "OPTIONS":
-                for i in range(3):
+                for i in range(4):
                     if pygame.Rect(W//2 - W*0.2, H*0.4 + i*(H*0.08) - H*0.03, W*0.4, H*0.06).collidepoint(mx, my):
-                        self.sel = i
-                        play_tone(600, 100)
-                        if self.sel == 2: self.sel = 0; self.state = "TITLE"
+                        self.sel = i; play_tone(600, 100)
+                        if self.sel == 3: self.sel = 0; self.state = "TITLE"
                         elif self.sel == 0: cfg.SFX_VOL = min(1.0, cfg.SFX_VOL + 0.1) if cfg.SFX_VOL < 1.0 else 0; play_tone(400, 50)
                         elif self.sel == 1: cfg.BGM_VOL = min(1.0, cfg.BGM_VOL + 0.1) if cfg.BGM_VOL < 1.0 else 0; update_bgm_vol()
+                        elif self.sel == 2:
+                            cfg.FULLSCREEN = not cfg.FULLSCREEN
+                            scr = pygame.display.set_mode((W, H), pygame.FULLSCREEN | pygame.SCALED if cfg.FULLSCREEN else pygame.SCALED)
                         break
             
             elif self.state == "PAUSE":
                 for i in range(2):
                     if pygame.Rect(W//2 - W*0.2, H*0.5 + i*(H*0.1) - H*0.03, W*0.4, H*0.06).collidepoint(mx, my):
-                        self.sel = i
-                        play_tone(600, 100)
+                        self.sel = i; play_tone(600, 100)
                         if self.sel == 0: self.state = self.prev_state
                         else: self.state = "TITLE"; self.sel = 0
                         break
@@ -573,11 +568,8 @@ class Game:
             elif self.state == "LEVEL_UP":
                 box_w, box_h = W*0.25, H*0.3; by = H*0.4
                 for i, upg in enumerate(self.upgrade_choices):
-                    bx = W*0.1 + i * (box_w + W*0.05)
-                    if pygame.Rect(bx, by, box_w, box_h).collidepoint(mx, my):
-                        play_tone(800, 100)
-                        self.apply_upgrade(upg["id"])
-                        break
+                    if pygame.Rect(W*0.1 + i * (box_w + W*0.05), by, box_w, box_h).collidepoint(mx, my):
+                        play_tone(800, 100); self.apply_upgrade(upg["id"]); break
 
             elif self.state == "MAP":
                 for node in self.map_nodes:
@@ -591,8 +583,7 @@ class Game:
                 if self.player.cd_slash <= 0:
                     wmx, wmy = mx + self.cam_x, my + self.cam_y
                     self.player.slash_angle = math.atan2(wmy - self.player.y, wmx - self.player.x)
-                    self.player.cd_slash = self.player.slash_cd_max; self.player.anim_slash = 8
-                    play_tone(800, 50)
+                    self.player.cd_slash = self.player.slash_cd_max; self.player.anim_slash = 8; play_tone(800, 50)
                     
                     slash_r = self.player.slash_radius
                     for m in self.monsters[:]:
@@ -603,13 +594,11 @@ class Game:
                                 if m.hp <= 0:
                                     if getattr(m, "m_type", 0) == 99: self.side_boss = None
                                     else: self.gems.append(ExpGem(m.x, m.y, 10))
-                                    self.monsters.remove(m); self.ammo += (m.m_type + 1)
-                                    play_tone(900, 50)
+                                    self.monsters.remove(m); self.ammo += (m.m_type + 1); play_tone(900, 50)
             
             elif self.state == "BOSS":
-                wmx, wmy = mx + self.cam_x, my + self.cam_y
                 if self.player.cd_shoot <= 0 and self.ammo > 0:
-                    ang = math.atan2(wmy - self.player.y, wmx - self.player.x)
+                    ang = math.atan2(my + self.cam_y - self.player.y, mx + self.cam_x - self.player.x)
                     vx, vy = math.cos(ang) * (H*0.015), math.sin(ang) * (H*0.015)
                     self.peluru.append(Peluru(self.player.x, self.player.y, img_monster, vx, vy, True))
                     self.ammo -= 1; self.player.cd_shoot = 12; play_tone(700, 50)
@@ -654,15 +643,19 @@ class Game:
                     else: pygame.quit(); sys.exit()
                         
             elif self.state == "OPTIONS":
-                if k in (pygame.K_w, pygame.K_UP): self.sel = (self.sel - 1) % 3; play_tone(400, 50)
-                if k in (pygame.K_s, pygame.K_DOWN): self.sel = (self.sel + 1) % 3; play_tone(400, 50)
+                if k in (pygame.K_w, pygame.K_UP): self.sel = (self.sel - 1) % 4; play_tone(400, 50)
+                if k in (pygame.K_s, pygame.K_DOWN): self.sel = (self.sel + 1) % 4; play_tone(400, 50)
                 if k in (pygame.K_a, pygame.K_LEFT):
                     if self.sel == 0: cfg.SFX_VOL = max(0, cfg.SFX_VOL - 0.1); play_tone(400, 50)
                     elif self.sel == 1: cfg.BGM_VOL = max(0, cfg.BGM_VOL - 0.1); update_bgm_vol()
                 if k in (pygame.K_d, pygame.K_RIGHT):
                     if self.sel == 0: cfg.SFX_VOL = min(1, cfg.SFX_VOL + 0.1); play_tone(400, 50)
                     elif self.sel == 1: cfg.BGM_VOL = min(1, cfg.BGM_VOL + 0.1); update_bgm_vol()
-                if k == pygame.K_RETURN and self.sel == 2: self.sel = 0; self.state = "TITLE"
+                if k == pygame.K_RETURN and self.sel == 2:
+                    cfg.FULLSCREEN = not cfg.FULLSCREEN
+                    scr = pygame.display.set_mode((W, H), pygame.FULLSCREEN | pygame.SCALED if cfg.FULLSCREEN else pygame.SCALED)
+                    play_tone(400, 50)
+                if k == pygame.K_RETURN and self.sel == 3: self.sel = 0; self.state = "TITLE"
 
             elif self.state == "LEVEL_UP":
                 if k in (pygame.K_a, pygame.K_LEFT): self.sel = max(0, self.sel - 1); play_tone(400, 50)
@@ -720,7 +713,7 @@ class Game:
                 c.update(self.player.x, self.player.y, pygame.time.get_ticks(), self.monsters, self.peluru_hutan)
 
             self.stage_timer += 1
-            max_timer = 60 * 90 # 90 Detik Survival
+            max_timer = 60 * 90 
             
             if self.stage_timer < max_timer:
                 spawn_rate = max(10, 60 - int((self.stage_timer / max_timer) * 50))
@@ -854,7 +847,7 @@ class Game:
         if self.state == "TITLE":
             scr.fill(TL)
             txt(scr, "DEMON KING QUEST", F48, RD, W//2, H*0.2, cx=True)
-            txt(scr, "Mouse Menu & Boss Fixed Edition", F24, LGR, W//2, H*0.3, cx=True)
+            txt(scr, "", F24, LGR, W//2, H*0.3, cx=True)
             has_save = os.path.exists(SAVE_FILE)
             opts = ["Mulai Baru", "Lanjutkan Game", "Pengaturan", "Keluar"] if has_save else ["Mulai Baru", "Pengaturan", "Keluar"]
             for i, opt in enumerate(opts):
@@ -864,7 +857,8 @@ class Game:
         elif self.state == "OPTIONS":
             scr.fill(TL)
             txt(scr, "PENGATURAN", F48, WH, W//2, H*0.2, cx=True)
-            opts = [f"SFX Vol: < {int(cfg.SFX_VOL*10)} >", f"BGM Vol: < {int(cfg.BGM_VOL*10)} >", "Kembali"]
+            fs_txt = "ON" if cfg.FULLSCREEN else "OFF"
+            opts = [f"SFX Vol: < {int(cfg.SFX_VOL*10)} >", f"BGM Vol: < {int(cfg.BGM_VOL*10)} >", f"Fullscreen: < {fs_txt} >", "Kembali"]
             for i, opt in enumerate(opts):
                 col = YL if i == self.sel else GR
                 txt(scr, ("> " if i == self.sel else "") + opt, F24, col, W//2, H*0.4 + i*(H*0.08), cx=True)
