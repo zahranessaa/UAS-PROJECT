@@ -1,6 +1,7 @@
 import pygame, sys, os, math, random, json
 from datetime import datetime
 from abc import ABC, abstractmethod 
+from dialog import Dialog, STORY, BASE_UPGRADES
 
 pygame.init()
 try:
@@ -120,16 +121,6 @@ img_jamur = load_img("jamur.png", sz_flower, (0, 255, 255))
 img_pohonsalju = load_img("pohonsalju.png", sz_tree, (200, 220, 230))
 img_lava = load_img("pohon.png", (120, 120), (200, 60, 0))
 img_tengkorak = load_img("tengkorak.png", sz_flower, (180, 180, 180))
-img_bg_map = load_img("map-bg.png", (W, H), MAP_BG)
-
-sz_node = (int(H*0.1), int(H*0.1))
-img_node = {
-    0: load_img("hutanpinus.png",  sz_node, GN),
-    1: load_img("gurun.png",       sz_node, YL),
-    2: load_img("rawa.png",        sz_node, (25, 20, 40)),
-    3: load_img("salju.png",       sz_node, (200, 220, 230)),
-    4: load_img("castiliblis.png", sz_node, RD),
-}
 
 try:
     img_bg_menu = pygame.image.load(os.path.join(BASE_PATH, "background.jpg")).convert()
@@ -413,53 +404,7 @@ def txt(surf, s, font, col, x, y, cx=False, cy=False):
     bx = x - ren.get_width()//2 if cx else x; by = y - ren.get_height()//2 if cy else y
     surf.blit(sh, (bx+2, by+2)); surf.blit(ren, (bx, by))
 
-class Dialog:
-    def __init__(self):
-        self.lines = []; self.spk = ""; self.ci = 0; self.done = False
-    def set(self, spk, text):
-        words = text.split(); lines = []; line = ""
-        for w in words:
-            if F18.size(line + " " + w)[0] < W*0.7: line += (" " if line else "") + w
-            else: lines.append(line); line = w
-        if line: lines.append(line)
-        self.lines = lines; self.spk = spk; self.ci = 0; self.done = False
-    def update(self):
-        if not self.done:
-            self.ci += 0.5
-            if self.ci >= sum(len(l) for l in self.lines): self.done = True
-    def draw(self, surf):
-        bx, by, bw, bh = W*0.1, H*0.7, W*0.8, H*0.25
-        pygame.draw.rect(surf, (20, 20, 40), (bx, by, bw, bh)); pygame.draw.rect(surf, WH, (bx, by, bw, bh), 3)
-        if self.spk:
-            pygame.draw.rect(surf, (40, 40, 80), (bx+20, by-30, F18.size(self.spk)[0]+20, 35)); txt(surf, self.spk, F18, YL, bx+30, by-25)
-        drawn = 0
-        for i, line in enumerate(self.lines):
-            rem = max(0, int(self.ci) - drawn)
-            txt(surf, line[:rem], F18, WH, bx+30, by+20 + i*(H*0.04))
-            drawn += len(line)
-        if self.done: txt(surf, "▼ Enter/Klik", F14, YL, bx+bw-140, by+bh-30)
 
-STORY = {
-    "intro": ("NARATOR", "Dunia Valoria di ambang kehancuran. Raja Iblis Malachar telah bangkit. Sebagai pahlawan terakhir, Kael, kau harus menumpas pasukannya di berbagai wilayah sebelum menghadapi sang Raja Iblis di Kastilnya!"),
-    "start": ("KAEL", "Pohon dan bebatuan tidak bisa ditembus. Manfaatkan alam untuk bersembunyi dari musuh! Tahan 90 Detik untuk memanggil Side Boss."),
-    "hutan_masuk": ("KAEL", "Ini Hutan Pinus. Pohon-pohonnya bisa melindungiku dari peluru musuh."),
-    "gurun_masuk": ("KAEL", "Gurun Wild West. Hati-hati jangan sampai mentok di kaktus raksasa itu!"),
-    "rawa_masuk": ("KAEL", "Rawa Gelap... Pohon mati ini sangat keras, aku bisa menggunakannya sebagai tembok."),
-    "salju_masuk": ("KAEL", "Lembah Salju. Bersembunyilah di balik pohon pinus beku!"),
-    "hutan_clear": ("KAEL", "Side Boss mati! Temanku bebas. Waktunya melangkah ke area selanjutnya."),
-    "boss_masuk": ("KAEL", "Ini akhirnya... Kastil Raja Iblis! Aku harus menghindari serangan mematikan Malachar, cari celah, lalu tebas dia!"),
-    "boss_win": ("NARATOR", "MALACHAR BERHASIL DIKALAHKAN! Kedamaian kembali ke Valoria."),
-    "boss_lose": ("NARATOR", "Kael telah gugur... Kiamat telah tiba!"),
-}
-
-BASE_UPGRADES = [
-    {"id": "hp", "name": "Max HP +20", "desc": "Menambah batas HP dan memulihkan 20 HP."},
-    {"id": "dmg", "name": "Damage Tebasan +10", "desc": "Tebasan pedang lebih menyakitkan."},
-    {"id": "spd", "name": "Kecepatan +10%", "desc": "Lari dari musuh lebih kencang."},
-    {"id": "cd", "name": "Attack Speed+", "desc": "Cooldown tebasan lebih cepat."},
-    {"id": "rad", "name": "Radius Tebasan+", "desc": "Jangkauan tebasan pedang membesar."},
-    {"id": "mag", "name": "Magnet EXP+", "desc": "Mengambil EXP dari jarak lebih jauh."}
-]
 
 # ==========================================
 # MAIN GAME MANAGER
@@ -1190,25 +1135,22 @@ class Main:
             scr.fill((15, 10, 20)); self.dlg.draw(scr)
 
         elif self.state == "MAP":
-            scr.blit(img_bg_map, (0, 0))
+            scr.fill(MAP_BG)
             for (n1, n2) in self.map_links:
                 x1, y1 = self.map_nodes[n1]['x'], self.map_nodes[n1]['y']
                 x2, y2 = self.map_nodes[n2]['x'], self.map_nodes[n2]['y']
                 draw_dashed_line(scr, (100, 90, 80), (x1, y1), (x2, y2))
                 
             for node in self.map_nodes:
-                nx, ny = node['x'], node['y'];
-                color = GR
-                if node['id'] in self.cleared_nodes:
-                    color = GN
+                nx, ny = node['x'], node['y']; color = GR 
+                if node['id'] in self.cleared_nodes: color = GN
                 elif self.is_node_available(node['id']):
-                    color = YL
-                    pulse = int(H * 0.045 + math.sin(pygame.time.get_ticks() * 0.005) * 5)
-                    pygame.draw.circle(scr, WH, (int(nx), int(ny)), pulse)
-
-                icon = img_node[node['id']]
-                scr.blit(icon, icon.get_rect(center=(int(nx), int(ny))))
-                txt(scr, node['name'], F14, BK, nx, ny + H * 0.06, cx=True)
+                    color = YL; pulse = int(H*0.045 + math.sin(pygame.time.get_ticks()*0.005)*5)
+                    pygame.draw.circle(scr, WH, (nx, ny), pulse)
+                
+                if node['type'] == 'BOSS': pygame.draw.circle(scr, RD, (nx, ny), int(H*0.05))
+                else: pygame.draw.circle(scr, color, (nx, ny), int(H*0.04))
+                txt(scr, node['name'], F14, BK, nx, ny + H*0.06, cx=True)
 
             if self.current_node_id != -1:
                 cx, cy = self.map_nodes[self.current_node_id]['x'], self.map_nodes[self.current_node_id]['y']
