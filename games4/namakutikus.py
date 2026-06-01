@@ -705,8 +705,8 @@ class Main:
                         break
 
             elif self.state == "STORY":
+                self.dlg.next_page()
                 if self.dlg.done: self.finish_dialog()
-                else: self.dlg.ci = 999
             
             elif self.state == "LEVEL_UP":
                 box_w, box_h = W*0.25, H*0.3; by = H*0.4
@@ -808,9 +808,9 @@ class Main:
                     else: pygame.mixer.music.stop(); self.state = "TITLE"; self.sel = 0
 
             elif self.state == "STORY":
-                if k == pygame.K_RETURN:
+                if k in (pygame.K_RETURN, pygame.K_SPACE):
+                    self.dlg.next_page()
                     if self.dlg.done: self.finish_dialog()
-                    else: self.dlg.ci = 999
             
             if k == pygame.K_ESCAPE:
                 if self.state in ["MAP", "HUNT", "BOSS"]: self.prev_state = self.state; self.state = "PAUSE"; self.sel = 0
