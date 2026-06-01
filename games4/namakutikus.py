@@ -701,7 +701,7 @@ class Main:
                 for i in range(2):
                     if pygame.Rect(W//2 - W*0.2, H*0.5 + i*(H*0.1) - H*0.03, W*0.4, H*0.06).collidepoint(mx, my):
                         self.sel = i; play_tone(600, 100)
-                        if self.sel == 0: self.state = self.prev_state
+                        if self.sel == 0: pygame.mixer.music.unpause();self.state = self.prev_state
                         else: pygame.mixer.music.stop(); self.state = "TITLE"; self.sel = 0
                         break
 
@@ -805,7 +805,7 @@ class Main:
                 if k in (pygame.K_w, pygame.K_UP, pygame.K_s, pygame.K_DOWN): self.sel = (self.sel + 1) % 2; play_tone(400, 50)
                 if k == pygame.K_RETURN:
                     play_tone(600, 100)
-                    if self.sel == 0: self.state = self.prev_state
+                    if self.sel == 0: pygame.mixer.music.unpause(); self.state = self.prev_state
                     else: pygame.mixer.music.stop(); self.state = "TITLE"; self.sel = 0
 
             elif self.state == "STORY":
