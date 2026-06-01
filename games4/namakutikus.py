@@ -453,7 +453,6 @@ class Main:
         ]
         self.map_links = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4)]
         self.cleared_nodes = []; self.current_node_id = -1; self.target_node_id = -1
-        play_bgm()
 
     def generate_map_objects(self, node_id):
         self.decos = []; self.obstacles = []
