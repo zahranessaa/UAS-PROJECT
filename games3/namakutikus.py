@@ -119,6 +119,7 @@ img_jamur = load_img("jamur.png", sz_flower, (0, 255, 255))
 img_pohonsalju = load_img("pohonsalju.png", sz_tree, (200, 220, 230))
 img_lava = load_img("pohon.png", (120, 120), (200, 60, 0))
 img_tengkorak = load_img("flower.png", sz_flower, (180, 180, 180))
+img_bg_map = load_img("map-bg.png", (W, H), MAP_BG)
 
 def draw_dashed_line(surf, color, start_pos, end_pos, width=3, dash_length=15):
     x1, y1 = start_pos; x2, y2 = end_pos
@@ -1150,7 +1151,7 @@ class Main:
             scr.fill((15, 10, 20)); self.dlg.draw(scr)
 
         elif self.state == "MAP":
-            scr.fill(MAP_BG)
+            scr.blit(img_bg_map, (0, 0))
             for (n1, n2) in self.map_links:
                 x1, y1 = self.map_nodes[n1]['x'], self.map_nodes[n1]['y']
                 x2, y2 = self.map_nodes[n2]['x'], self.map_nodes[n2]['y']
