@@ -120,6 +120,16 @@ img_jamur = load_img("jamur.png", sz_flower, (0, 255, 255))
 img_pohonsalju = load_img("pohonsalju.png", sz_tree, (200, 220, 230))
 img_lava = load_img("pohon.png", (120, 120), (200, 60, 0))
 img_tengkorak = load_img("tengkorak.png", sz_flower, (180, 180, 180))
+img_bg_map = load_img("map-bg.png", (W, H), MAP_BG)
+
+sz_node = (int(H*0.1), int(H*0.1))
+img_node = {
+    0: load_img("hutanpinus.png",  sz_node, GN),
+    1: load_img("gurun.png",       sz_node, YL),
+    2: load_img("rawa.png",        sz_node, (25, 20, 40)),
+    3: load_img("salju.png",       sz_node, (200, 220, 230)),
+    4: load_img("castiliblis.png", sz_node, RD),
+}
 
 try:
     img_bg_menu = pygame.image.load(os.path.join(BASE_PATH, "background.jpg")).convert()
@@ -1187,15 +1197,18 @@ class Main:
                 draw_dashed_line(scr, (100, 90, 80), (x1, y1), (x2, y2))
                 
             for node in self.map_nodes:
-                nx, ny = node['x'], node['y']; color = GR 
-                if node['id'] in self.cleared_nodes: color = GN
+                nx, ny = node['x'], node['y'];
+                color = GR
+                if node['id'] in self.cleared_nodes:
+                    color = GN
                 elif self.is_node_available(node['id']):
-                    color = YL; pulse = int(H*0.045 + math.sin(pygame.time.get_ticks()*0.005)*5)
-                    pygame.draw.circle(scr, WH, (nx, ny), pulse)
-                
-                if node['type'] == 'BOSS': pygame.draw.circle(scr, RD, (nx, ny), int(H*0.05))
-                else: pygame.draw.circle(scr, color, (nx, ny), int(H*0.04))
-                txt(scr, node['name'], F14, BK, nx, ny + H*0.06, cx=True)
+                    color = YL
+                    pulse = int(H * 0.045 + math.sin(pygame.time.get_ticks() * 0.005) * 5)
+                    pygame.draw.circle(scr, WH, (int(nx), int(ny)), pulse)
+
+                icon = img_node[node['id']]
+                scr.blit(icon, icon.get_rect(center=(int(nx), int(ny))))
+                txt(scr, node['name'], F14, BK, nx, ny + H * 0.06, cx=True)
 
             if self.current_node_id != -1:
                 cx, cy = self.map_nodes[self.current_node_id]['x'], self.map_nodes[self.current_node_id]['y']

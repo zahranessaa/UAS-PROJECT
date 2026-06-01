@@ -121,6 +121,15 @@ img_lava = load_img("pohon.png", (120, 120), (200, 60, 0))
 img_tengkorak = load_img("flower.png", sz_flower, (180, 180, 180))
 img_bg_map = load_img("map-bg.png", (W, H), MAP_BG)
 
+sz_node = (int(H*0.1), int(H*0.1))
+img_node = {
+    0: load_img("hutanpinus.png",  sz_node, GN),
+    1: load_img("gurun.png",       sz_node, YL),
+    2: load_img("rawa.png",        sz_node, (25, 20, 40)),
+    3: load_img("salju.png",       sz_node, (200, 220, 230)),
+    4: load_img("castiliblis.png", sz_node, RD),
+}
+
 def draw_dashed_line(surf, color, start_pos, end_pos, width=3, dash_length=15):
     x1, y1 = start_pos; x2, y2 = end_pos
     dl = math.hypot(x2 - x1, y2 - y1)
@@ -1151,22 +1160,25 @@ class Main:
             scr.fill((15, 10, 20)); self.dlg.draw(scr)
 
         elif self.state == "MAP":
-            scr.blit(img_bg_map, (0, 0))
+            img_bg_map = load_img("map-bg.png", (W, H), MAP_BG)
             for (n1, n2) in self.map_links:
                 x1, y1 = self.map_nodes[n1]['x'], self.map_nodes[n1]['y']
                 x2, y2 = self.map_nodes[n2]['x'], self.map_nodes[n2]['y']
                 draw_dashed_line(scr, (100, 90, 80), (x1, y1), (x2, y2))
                 
             for node in self.map_nodes:
-                nx, ny = node['x'], node['y']; color = GR 
-                if node['id'] in self.cleared_nodes: color = GN
+                nx, ny = node['x'], node['y'];
+                color = GR
+                if node['id'] in self.cleared_nodes:
+                    color = GN
                 elif self.is_node_available(node['id']):
-                    color = YL; pulse = int(H*0.045 + math.sin(pygame.time.get_ticks()*0.005)*5)
-                    pygame.draw.circle(scr, WH, (nx, ny), pulse)
-                
-                if node['type'] == 'BOSS': pygame.draw.circle(scr, RD, (nx, ny), int(H*0.05))
-                else: pygame.draw.circle(scr, color, (nx, ny), int(H*0.04))
-                txt(scr, node['name'], F14, BK, nx, ny + H*0.06, cx=True)
+                    color = YL
+                    pulse = int(H * 0.045 + math.sin(pygame.time.get_ticks() * 0.005) * 5)
+                    pygame.draw.circle(scr, WH, (int(nx), int(ny)), pulse)
+
+                icon = img_node[node['id']]
+                scr.blit(icon, icon.get_rect(center=(int(nx), int(ny))))
+                txt(scr, node['name'], F14, BK, nx, ny + H * 0.06, cx=True)
 
             if self.current_node_id != -1:
                 cx, cy = self.map_nodes[self.current_node_id]['x'], self.map_nodes[self.current_node_id]['y']
