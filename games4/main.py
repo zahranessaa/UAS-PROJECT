@@ -1,4 +1,4 @@
-from namakutikus import Main
+from maingame import Main
 
 # Menyalakan mesinnya
 if __name__ == "__main__":

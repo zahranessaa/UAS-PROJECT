@@ -61,12 +61,14 @@ def play_tone(freq, ms):
 
 def play_bgm(filename=None):
     if _AUDIO:
-        try:
-            pygame.mixer.music.load(filename)
-            pygame.mixer.music.set_volume(cfg.BGM_VOL)
-            pygame.mixer.music.play(-1)
-        except Exception as e:
-            print(f"Musik gagal dimuat: {e}")
+        pygame.mixer.music.stop() 
+        if filename:
+            try:
+                pygame.mixer.music.load(filename)
+                pygame.mixer.music.set_volume(cfg.BGM_VOL)
+                pygame.mixer.music.play(-1)
+            except Exception as e:
+                print(f"Musik gagal dimuat: {e}")
 
 def update_bgm_vol():
     if _AUDIO: pygame.mixer.music.set_volume(cfg.BGM_VOL)
@@ -439,6 +441,7 @@ class Main:
         self.efek_air = []
         self.efek_tanah = []
         self.active_lightnings = [] 
+        self.bom_waktu = []
         
         self.decos = []; self.obstacles = []
         self.bg_surface = None 
@@ -584,11 +587,13 @@ class Main:
             4: "bgm_boss.mp3",
         }
         play_bgm(bgm_map.get(node_id, "gameplay_music.mp3"))
+        node = self.map_nodes[node_id]
 
         node = self.map_nodes[node_id]
         self.generate_map_objects(node['id'])
         self.peluru_api = []; self.ledakan_api = []
         self.efek_air = []; self.efek_tanah = []; self.active_lightnings = []
+        self.bom_waktu = []
         
         if node['type'] == 'HUNT':
             self.state = "HUNT"
@@ -723,24 +728,44 @@ class Main:
                             break
                             
             elif self.state == "HUNT" or self.state == "BOSS":
-                if self.player.cd_slash <= 0:
-                    wmx, wmy = mx + self.cam_x, my + self.cam_y
-                    self.player.slash_angle = math.atan2(wmy - self.player.y, wmx - self.player.x)
-                    self.player.cd_slash = self.player.slash_cd_max; self.player.anim_slash = 8; play_tone(800, 50)
-                    slash_r = self.player.slash_radius
-                    
-                    if self.state == "HUNT":
-                        for m in self.monsters[:]:
-                            if math.hypot(m.x - self.player.x, m.y - self.player.y) < slash_r:
-                                m_ang = math.atan2(m.y - self.player.y, m.x - self.player.x)
-                                if abs(math.remainder(m_ang - self.player.slash_angle, math.tau)) < math.radians(60):
-                                    m.hp -= self.player.slash_dmg; m.stun = 20; play_tone(150, 50)
-                                    if m.hp <= 0: self.kill_monster(m); play_tone(900, 50)
-                    elif self.state == "BOSS":
+            
+            # --- SISTEM AUTO ATTACK (MENGIKUTI MOUSE) ---
+             if self.player.cd_slash <= 0:
+                mx, my = pygame.mouse.get_pos()
+                wmx, wmy = mx + self.cam_x, my + self.cam_y
+                self.player.slash_angle = math.atan2(wmy - self.player.y, wmx - self.player.x)
+                self.player.cd_slash = self.player.slash_cd_max; self.player.anim_slash = 8; play_tone(800, 50)
+                slash_r = self.player.slash_radius
+                
+                if self.state == "HUNT":
+                    for m in self.monsters[:]:
+                        if math.hypot(m.x - self.player.x, m.y - self.player.y) < slash_r:
+                            m_ang = math.atan2(m.y - self.player.y, m.x - self.player.x)
+                            if abs(math.remainder(m_ang - self.player.slash_angle, math.tau)) < math.radians(60):
+                                m.hp -= self.player.slash_dmg; m.stun = 20; play_tone(150, 50)
+                                if m.hp <= 0: self.kill_monster(m); play_tone(900, 50)
+                elif self.state == "BOSS":
+                    if hasattr(self, 'boss') and self.boss.hp > 0:
                         if math.hypot(self.boss.x - self.player.x, self.boss.y - self.player.y) < slash_r:
                             b_ang = math.atan2(self.boss.y - self.player.y, self.boss.x - self.player.x)
                             if abs(math.remainder(b_ang - self.player.slash_angle, math.tau)) < math.radians(60):
                                 self.boss.hp -= self.player.slash_dmg; play_tone(150, 50)
+            
+            targets = self.get_valid_targets()
+            
+            # --- LOGIKA BOM WAKTU MONSTER BIRU ---
+            for b in getattr(self, "bom_waktu", [])[:]:
+                b["timer"] -= 1
+                if b["timer"] <= 0:
+                    # Ciptakan efek ledakan
+                    self.ledakan_api.append({"x": b["x"], "y": b["y"], "r": 0, "max_r": H*0.12, "timer": 15})
+                    play_tone(300, 150)
+                    # Cek jika player ada di area ledakan
+                    if math.hypot(self.player.x - b["x"], self.player.y - b["y"]) < H*0.12:
+                        if self.player.invuln <= 0:
+                            self.player.take_damage(20) # Damage ledakan
+                            self.player.invuln = 45; play_tone(100, 100)
+                    self.bom_waktu.remove(b)
 
         elif ev.type == pygame.KEYDOWN:
             k = ev.key
@@ -931,9 +956,13 @@ class Main:
                 self.stage_timer += 1
                 max_timer = 60 * 90 
                 
-                # --- SCALING TINGKAT KESULITAN MAP ---
-                map_mult = 1.0 + (self.current_node_id * 0.8) 
-                level_mult = 1.0 + (self.player.level * 0.1) 
+                # SCALING TINGKAT KESULITAN MAP 
+                if self.current_node_id == 1: map_mult = 1.2    
+                elif self.current_node_id == 2: map_mult = 1.3   
+                elif self.current_node_id == 3: map_mult = 1.4   
+                else: map_mult = 1.0                             
+                
+                level_mult = 1.0 + (self.player.level * 0.1)
                 
                 if self.stage_timer < max_timer:
                     max_monsters = int(60 + (self.player.level * 5)) 
@@ -1287,7 +1316,7 @@ class Main:
         if self.state == "PAUSE":
             ov = pygame.Surface((W, H), pygame.SRCALPHA); ov.fill((0, 0, 0, 180)); scr.blit(ov, (0, 0))
             txt(scr, "GAME PAUSED", F48, WH, W//2, H*0.3, cx=True)
-            for i, opt in enumerate(["Lanjutkan", "Kembali ke Menu Utama"]):
+            for i, opt in enumerate(["Lanjutkan","Pengaturan", "Kembali ke Menu Utama"]):
                 col = YL if i == self.sel else GR
                 txt(scr, ("> " if i == self.sel else "") + opt, F24, col, W//2, H*0.5 + i*(H*0.1), cx=True)
 
