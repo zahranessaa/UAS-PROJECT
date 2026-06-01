@@ -121,6 +121,16 @@ img_jamur = load_img("jamur.png", sz_flower, (0, 255, 255))
 img_pohonsalju = load_img("pohonsalju.png", sz_tree, (200, 220, 230))
 img_lava = load_img("pohon.png", (120, 120), (200, 60, 0))
 img_tengkorak = load_img("tengkorak.png", sz_flower, (180, 180, 180))
+img_bg_map = load_img("map-bg.png", (W, H), MAP_BG)
+
+sz_node = (int(H*0.1), int(H*0.1))
+img_node = {
+    0: load_img("hutanpinus.png",  sz_node, GN),
+    1: load_img("gurun.png",       sz_node, YL),
+    2: load_img("rawa.png",        sz_node, (25, 20, 40)),
+    3: load_img("salju.png",       sz_node, (200, 220, 230)),
+    4: load_img("castiliblis.png", sz_node, RD),
+}
 
 try:
     img_bg_menu = pygame.image.load(os.path.join(BASE_PATH, "background.jpg")).convert()
@@ -567,6 +577,15 @@ class Main:
         return targets
 
     def teleport_to_map(self, node_id):
+        bgm_map = {
+            0: "bgm-hutan.mp3",
+            1: "bgm_gurun.mp3",
+            2: "bgm_rawa.mp3",
+            3: "bgm_salju.mp3",
+            4: "bgm_boss.mp3",
+        }
+        play_bgm(bgm_map.get(node_id, "gameplay_music.mp3"))
+
         node = self.map_nodes[node_id]
         self.generate_map_objects(node['id'])
         self.peluru_api = []; self.ledakan_api = []
@@ -683,7 +702,7 @@ class Main:
                     if pygame.Rect(W//2 - W*0.2, H*0.5 + i*(H*0.1) - H*0.03, W*0.4, H*0.06).collidepoint(mx, my):
                         self.sel = i; play_tone(600, 100)
                         if self.sel == 0: self.state = self.prev_state
-                        else: self.state = "TITLE"; self.sel = 0
+                        else: pygame.mixer.music.stop(); self.state = "TITLE"; self.sel = 0
                         break
 
             elif self.state == "STORY":
@@ -787,7 +806,7 @@ class Main:
                 if k == pygame.K_RETURN:
                     play_tone(600, 100)
                     if self.sel == 0: self.state = self.prev_state
-                    else: self.state = "TITLE"; self.sel = 0
+                    else: pygame.mixer.music.stop(); self.state = "TITLE"; self.sel = 0
 
             elif self.state == "STORY":
                 if k == pygame.K_RETURN:
@@ -796,6 +815,7 @@ class Main:
             
             if k == pygame.K_ESCAPE:
                 if self.state in ["MAP", "HUNT", "BOSS"]: self.prev_state = self.state; self.state = "PAUSE"; self.sel = 0
+                pygame.mixer.music.pause()
 
     def finish_dialog(self):
         if self.active_story_key == "intro":
@@ -1135,22 +1155,25 @@ class Main:
             scr.fill((15, 10, 20)); self.dlg.draw(scr)
 
         elif self.state == "MAP":
-            scr.fill(MAP_BG)
+            scr.blit(img_bg_map, (0, 0))
             for (n1, n2) in self.map_links:
                 x1, y1 = self.map_nodes[n1]['x'], self.map_nodes[n1]['y']
                 x2, y2 = self.map_nodes[n2]['x'], self.map_nodes[n2]['y']
                 draw_dashed_line(scr, (100, 90, 80), (x1, y1), (x2, y2))
                 
             for node in self.map_nodes:
-                nx, ny = node['x'], node['y']; color = GR 
-                if node['id'] in self.cleared_nodes: color = GN
+                nx, ny = node['x'], node['y'];
+                color = GR
+                if node['id'] in self.cleared_nodes:
+                    color = GN
                 elif self.is_node_available(node['id']):
-                    color = YL; pulse = int(H*0.045 + math.sin(pygame.time.get_ticks()*0.005)*5)
-                    pygame.draw.circle(scr, WH, (nx, ny), pulse)
-                
-                if node['type'] == 'BOSS': pygame.draw.circle(scr, RD, (nx, ny), int(H*0.05))
-                else: pygame.draw.circle(scr, color, (nx, ny), int(H*0.04))
-                txt(scr, node['name'], F14, BK, nx, ny + H*0.06, cx=True)
+                    color = YL
+                    pulse = int(H * 0.045 + math.sin(pygame.time.get_ticks() * 0.005) * 5)
+                    pygame.draw.circle(scr, WH, (int(nx), int(ny)), pulse)
+
+                icon = img_node[node['id']]
+                scr.blit(icon, icon.get_rect(center=(int(nx), int(ny))))
+                txt(scr, node['name'], F14, BK, nx, ny + H * 0.06, cx=True)
 
             if self.current_node_id != -1:
                 cx, cy = self.map_nodes[self.current_node_id]['x'], self.map_nodes[self.current_node_id]['y']
