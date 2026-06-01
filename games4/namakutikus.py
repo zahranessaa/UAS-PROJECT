@@ -1190,7 +1190,7 @@ class Main:
             scr.fill((15, 10, 20)); self.dlg.draw(scr)
 
         elif self.state == "MAP":
-            scr.fill(MAP_BG)
+            scr.blit(img_bg_map, (0, 0))
             for (n1, n2) in self.map_links:
                 x1, y1 = self.map_nodes[n1]['x'], self.map_nodes[n1]['y']
                 x2, y2 = self.map_nodes[n2]['x'], self.map_nodes[n2]['y']
