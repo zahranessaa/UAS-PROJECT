@@ -116,7 +116,7 @@ STORY = {
     "gurun_masuk": ("KAEL", "Gurun Wild West. Hati-hati dengan ledakan monster api itu"),
     "rawa_masuk": ("KAEL", "Rawa Gelap... Pohon mati ini sangat keras, aku bisa menggunakannya sebagai tembok."),
     "salju_masuk": ("KAEL", "Lembah Salju. Bersembunyilah dari golem tanah itu."),
-    "hutan_clear": ("KAEL", "Elemen sudah berhasil saya dapatkan, Dan sekarang dia menjadi temanku"),
+    "hutan_clear": ("KAEL", "Monster elemen sudah berhasil saya dapatkan, Dan sekarang dia menjadi temanku"),
     "boss_masuk": ("CINEMATIC", [
         "Pertarungan sengit terjadi antara sang penjaga melawan kegelapan"
     ]),
