@@ -15,8 +15,13 @@ versi .exe
 
 Cara Bermain
 Bergerak: Gunakan tombol W, A, S, D atau Tombol Panah (Up, Down, Left, Right).
+
 Menghindar (Dash): Tekan tombol arah yang sama dua kali secara cepat (Double-Tap W/A/S/D) untuk menghindari serangan. Memiliki waktu cooldown singkat.  
+
 Menyerang: auto-attack, Karaktermu akan menebas musuh di sekitarnya dan mengeluarkan sihir elemen secara otomatis.
+
 Navigasi Menu & Peta: Gunakan Klik Kiri Mouse untuk memilih area di peta atau memilih upgrade. Bisa juga menggunakan Tombol Panah dan Enter.  
+
 Melanjutkan Cerita/Dialog: Tekan Enter atau Space.  
+
 Jeda (Pause) / Kembali: Tekan ESC.
