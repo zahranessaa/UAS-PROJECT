@@ -136,7 +136,7 @@ img_bunga = load_img("flower.png", sz_flower, (255, 100, 200))
 img_kaktus = load_img("kaktus.png", sz_tree, (46, 139, 87))
 img_saloon = load_img("Saloon.png", (300,300), (46, 139, 87))
 img_batu = load_img("batu.png", (30,30), (100, 100, 100))
-img_pohonmati = load_img("pohonmati.png", sz_tree, (60, 50, 40))
+img_pohonmati = load_img("pohonmati1.png", sz_tree, (60, 50, 40))
 img_jamur = load_img("jamur.png", sz_flower, (0, 255, 255))
 img_pohonsalju = load_img("pohonsalju.png", sz_tree, (200, 220, 230))
 img_lava = load_img("pohonmati1.png", (120, 120), (200, 60, 0))
@@ -525,7 +525,6 @@ class Main:
             for _ in range(30): self.decos.append(ObjekMap(random.randint(0,ww), random.randint(0,wh), img_batu, False))
             for _ in range(80): self.obstacles.append(ObjekMap(random.randint(0,ww), random.randint(0,wh), img_kaktus, True))
         elif node_id == 2:
-            for _ in range(150): self.decos.append(ObjekMap(random.randint(0,ww), random.randint(0,wh), img_jamur, False))
             for _ in range(100): self.obstacles.append(ObjekMap(random.randint(0,ww), random.randint(0,wh), img_pohonmati, True))
         elif node_id == 3:
             for _ in range(100): self.obstacles.append(ObjekMap(random.randint(0,ww), random.randint(0,wh), img_pohonsalju, True))
