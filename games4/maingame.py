@@ -44,7 +44,7 @@ F24 = mkfont(int(H*0.045)); F48 = mkfont(int(H*0.08))
 
 class Config:
     SFX_VOL = 0.1
-    BGM_VOL = 0.5
+    BGM_VOL = 0.8
     FULLSCREEN = True
 
 cfg = Config()
@@ -480,8 +480,15 @@ class Main:
             {"id": 3, "name": "Lembah Salju", "x": W*0.5, "y": H*0.4, "type": "HUNT", "story": "salju_masuk"},
             {"id": 4, "name": "Kastil Raja Iblis", "x": W*0.5, "y": H*0.15, "type": "BOSS", "story": "boss_masuk"}
         ]
+
         self.map_links = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4)]
         self.cleared_nodes = []; self.current_node_id = -1; self.target_node_id = -1
+
+        self.transisi_aktif = False
+        self.transisi_alpha = 0
+        self.transisi_mode = 0
+        self.state_tujuan = None
+        self.aksi_setelah_hitam = None
 
     def generate_map_objects(self, node_id):
         self.decos = []; self.obstacles = []
@@ -537,6 +544,14 @@ class Main:
             for _ in range(120): self.obstacles.append(ObjekMap(random.randint(0,ww), random.randint(0,wh), img_pohon, True))
             
         self.obstacles = [o for o in self.obstacles if math.hypot(o.x - ww//2, o.y - wh//2) > H*0.2]
+
+    # untuk transisi 
+    def mulai_transisi(self, state_tujuan=None, aksi=None):
+        if not self.transisi_aktif:
+            self.transisi_aktif = True
+            self.transisi_mode = 1         
+            self.state_tujuan = state_tujuan
+            self.aksi_setelah_hitam = aksi 
 
     def save_game(self):
         data = {
@@ -667,6 +682,7 @@ class Main:
             clk.tick(FPS)
 
     def handle_input(self, ev):
+        if getattr(self, "transisi_aktif", False): return
         global scr  
         has_save = os.path.exists(SAVE_FILE)
         title_opts = ["Mulai Baru", "Lanjutkan", "Leaderboard", "Developer Mode", "Pengaturan", "Keluar"] if has_save else ["Mulai Baru", "Leaderboard", "Developer Mode", "Pengaturan", "Keluar"]
@@ -703,10 +719,13 @@ class Main:
                         self.sel = i; play_tone(600, 100)
                         act = title_opts[i]
                         if act == "Mulai Baru": 
-                            self.player = Player(W//2, H//2)
-                            self.cleared_nodes = []; self.current_node_id = -1; self.companions = []
-                            self.score = 0
-                            self.set_story("intro") 
+                            def reset_game():
+                                self.player = Player(W//2, H//2)
+                                self.cleared_nodes = []; self.current_node_id = -1; self.companions = []
+                                self.score = 0
+                                self.set_story("intro")
+                            
+                            self.mulai_transisi(None, reset_game)
                         elif act == "Lanjutkan": self.load_game()
                         elif act == "Leaderboard": self.state = "LEADERBOARD"
                         elif act == "Developer Mode": self.sel = 0; self.state = "DEV_MODE"
@@ -786,10 +805,15 @@ class Main:
                 if k == pygame.K_RETURN:
                     play_tone(600, 100); act = title_opts[self.sel]
                     if act == "Mulai Baru": 
-                        self.player = Player(W//2, H//2)
-                        self.cleared_nodes = []; self.current_node_id = -1; self.companions = []
-                        self.score = 0
-                        self.set_story("intro")
+                        def reset_game():
+                            self.player = Player(W//2, H//2)
+                            self.cleared_nodes = []; self.current_node_id = -1; self.companions = []
+                            self.score = 0
+                            self.set_story("intro")
+                        
+                        self.mulai_transisi(None, reset_game)
+                    elif act == "Lanjutkan": self.load_game()
+                    # ... lanjutan kodemu ...
                     elif act == "Lanjutkan": self.load_game()
                     elif act == "Leaderboard": self.state = "LEADERBOARD"
                     elif act == "Developer Mode": self.sel = 0; self.state = "DEV_MODE"
@@ -855,21 +879,48 @@ class Main:
                 pygame.mixer.music.pause()
 
     def finish_dialog(self):
-        if self.active_story_key == "intro":
-            play_bgm("gameplay_music.mp3")
-            self.state = "MAP"
-        elif self.active_story_key in ["boss_win", "boss_lose"]: 
-            self.save_to_leaderboard()
-            play_bgm("mainmenu.mp3")
-            self.state = "TITLE"; self.sel = 0
-        elif self.target_node_id != -1 and self.state != "MAP":
-            self.current_node_id = self.target_node_id 
-            self.teleport_to_map(self.target_node_id)
-            self.target_node_id = -1
-        else:
-            self.state = "MAP"
+        def aksi_pindah():
+            if self.active_story_key == "intro":
+                play_bgm("gameplay_music.mp3")
+                self.state = "MAP"
+            elif self.active_story_key in ["boss_win", "boss_lose"]: 
+                self.save_to_leaderboard()
+                play_bgm("mainmenu.mp3")
+                self.state = "TITLE"; self.sel = 0
+            elif self.target_node_id != -1 and self.state != "MAP":
+                self.current_node_id = self.target_node_id 
+                self.teleport_to_map(self.target_node_id)
+                self.target_node_id = -1
+            else:
+                self.state = "MAP"
+        
+        self.mulai_transisi(None, aksi_pindah)
 
     def update(self):
+        # --- PROSES TRANSISI (TARUH DI SINI PERSIS) ---
+        if getattr(self, "transisi_aktif", False):
+            if self.transisi_mode == 1:
+                self.transisi_alpha += 15
+                if self.transisi_alpha >= 255:
+                    self.transisi_alpha = 255
+                    self.transisi_mode = -1
+                    
+                    if getattr(self, "aksi_setelah_hitam", None): 
+                        self.aksi_setelah_hitam()
+                    if getattr(self, "state_tujuan", None):
+                        if self.state in ["HUNT", "BOSS", "MAP"]:
+                            self.prev_state = self.state
+                        self.state = self.state_tujuan
+                        
+            elif self.transisi_mode == -1:
+                self.transisi_alpha -= 15
+                if self.transisi_alpha <= 0:
+                    self.transisi_alpha = 0
+                    self.transisi_aktif = False
+                    self.transisi_mode = 0
+            return # Ini bakal hentikan logika game yang lain selama transisi jalan
+        # -----------------------
+
         keys = pygame.key.get_pressed()
         if self.state not in ["PAUSE", "TITLE", "OPTIONS", "LEVEL_UP", "LEADERBOARD", "DEV_MODE"]:
             self.player.update()
@@ -1390,6 +1441,7 @@ class Main:
             txt(scr, "LEVEL UP!", F48, YL, W//2, H*0.2, cx=True)
             txt(scr, "Pilih satu upgrade (A/D untuk geser, Mouse Klik / Enter untuk pilih)", F18, WH, W//2, H*0.3, cx=True)
             
+        
             box_w, box_h = W*0.25, H*0.3
             for i, upg in enumerate(self.upgrade_choices):
                 bx = W*0.1 + i * (box_w + W*0.05); by = H*0.4
@@ -1403,3 +1455,9 @@ class Main:
                     if F14.size(line + " " + w)[0] < box_w - 20: line += (" " if line else "") + w
                     else: txt(scr, line, F14, WH, bx + box_w//2, by + y_off, cx=True); line = w; y_off += 25
                 txt(scr, line, F14, WH, bx + box_w//2, by + y_off, cx=True)
+        
+        if getattr(self, 'transisi_alpha', 0) > 0:
+            permukaan_hitam = pygame.Surface((W, H))
+            permukaan_hitam.fill((0, 0, 0)) # Warna solid hitam
+            permukaan_hitam.set_alpha(self.transisi_alpha)
+            scr.blit(permukaan_hitam, (0, 0))
