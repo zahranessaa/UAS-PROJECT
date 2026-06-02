@@ -43,7 +43,7 @@ F24 = mkfont(int(H*0.045)); F48 = mkfont(int(H*0.08))
 # PENGATURAN & AUDIO
 
 class Config:
-    SFX_VOL = 0.5
+    SFX_VOL = 0.1
     BGM_VOL = 0.5
     FULLSCREEN = True
 
@@ -129,7 +129,9 @@ except:
 img_m_normal = load_img("monster_hijau.png", (sz_m, sz_m), YL)  
 img_m_tank   = load_img("monster_biru.png", (sz_m, sz_m), BL)  
 img_m_fast   = load_img("monster_merah.png", (sz_m, sz_m), RD) 
+# --
 
+# image inmap
 sz_tree = (int(H*0.12), int(H*0.18)); sz_flower = (int(H*0.04), int(H*0.04))
 img_pohon = load_img("pohon.png", (120, 120), (20, 100, 20))
 img_bunga = load_img("flower.png", sz_flower, (255, 100, 200))
@@ -143,6 +145,7 @@ img_lava = load_img("pohonmati1.png", (120, 120), (200, 60, 0))
 img_tengkorak = load_img("flowermerah.png", sz_flower, (180, 180, 180))
 img_bg_map = load_img("map-bg.png", (W, H), MAP_BG)
 
+
 sz_node = (int(H*0.1), int(H*0.1))
 img_node = {
     0: load_img("hutanpinus.png",  sz_node, GN),
@@ -152,6 +155,7 @@ img_node = {
     4: load_img("castiliblis.png", sz_node, RD),
 }
 
+# background main menu
 try:
     img_bg_menu = pygame.image.load(os.path.join(BASE_PATH, "backgroundmenu.png")).convert()
     img_bg_menu = pygame.transform.scale(img_bg_menu, (W, H))
@@ -211,8 +215,8 @@ class BossObj(Entitas):
 class Player(Entitas):
     def __init__(self, x, y):
         super().__init__(x, y, img_player)
-        self.__hp = 100       
-        self.__max_hp = 100   
+        self._hp = 100       
+        self._max_hp = 100   
         self.hp_regen = 0.04 
         self.base_speed = H * 0.007; self.speed_mult = 1.0
         self.slash_dmg = 10; self.slash_cd_max = 25
@@ -230,19 +234,19 @@ class Player(Entitas):
         self.last_tap = {pygame.K_w: 0, pygame.K_a: 0, pygame.K_s: 0, pygame.K_d: 0}
         self.dash_timer = 0; self.dash_dir = (0, 0)
 
-    def get_hp(self): return self.__hp
-    def get_max_hp(self): return self.__max_hp
+    def get_hp(self): return self._hp
+    def get_max_hp(self): return self._max_hp
     def take_damage(self, amount):
-        self.__hp -= amount
-        if self.__hp < 0: self.__hp = 0
+        self._hp -= amount
+        if self._hp < 0: self._hp = 0
     def heal(self, amount):
-        self.__hp = min(self.__max_hp, self.__hp + amount)
+        self._hp = min(self._max_hp, self._hp + amount)
     def add_max_hp(self, amount):
-        self.__max_hp += amount
-        self.__hp += amount
+        self._max_hp += amount
+        self._hp += amount
     def set_loaded_hp(self, max_hp):
-        self.__max_hp = max_hp
-        self.__hp = max_hp
+        self._max_hp = max_hp
+        self._hp = max_hp
     
     def handle_dash(self, key):
         if self.cd_dash > 0:
@@ -294,7 +298,7 @@ class Player(Entitas):
         if self.cd_dash > 0: self.cd_dash -= 1
         if self.anim_slash > 0: self.anim_slash -= 1
         if self.invuln > 0: self.invuln -= 1
-        if 0 < self.__hp < self.__max_hp: self.heal(self.hp_regen)
+        if 0 < self._hp < self._max_hp: self.heal(self.hp_regen)
         
         for k in self.cd_skills:
             if self.cd_skills[k] > 0: self.cd_skills[k] -= 1
@@ -626,6 +630,8 @@ class Main:
     def teleport_to_map(self, node_id):
         bgm_map = {
             0: "bgm-hutan.mp3",
+            1: "wildwest.mp3",
+            3: "snowsong.mp3",
             4: "bgm_boss.mp3",
         }
         play_bgm(bgm_map.get(node_id, "gameplay_music.mp3"))
