@@ -1,5 +1,5 @@
 kalian bisa clone yang games4 untuk gamenya lewat vscode atau bisa langsung .exe pakai link yang dibawah ini 
-https://drive.google.com/file/d/1BMMBKuGzh6p3YvFWDnKI74GlM9GGD_fd/view?usp=sharing
+https://drive.google.com/file/d/1BtJx3vDayRZEsQx2sZ8odcYT4UULv9qX/view?usp=sharing
 
 versi vscode
 1. clone games4
